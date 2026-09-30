@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- AppStream metadata: what Ubuntu App Center / GNOME Software show about Ligature. -->
+<component type="desktop-application">
+  <id>io.github.quezka.Ligature</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+
+  <name>Ligature</name>
+  <summary>ER and UML class diagrams for school, with SQL</summary>
+  <developer id="io.github.quezka">
+    <name>Quezka</name>
+  </developer>
+
+  <description>
+    <p>
+      Ligature draws the diagrams computer science classes ask for, and does the tedious
+      part for you.
+    </p>
+    <ul>
+      <li>ER diagrams in Chen notation (rectangles, diamonds, attribute lollipops, (min,max)
+          cardinalities) or crow's foot, switchable at any time</li>
+      <li>The logical schema and CREATE TABLE statements for MySQL, PostgreSQL, SQLite or
+          standard SQL, following the usual school rules</li>
+      <li>UML class diagrams: attributes, operations, visibility, abstract classes, interfaces,
+          inheritance, aggregation and composition</li>
+      <li>PNG, SVG and PDF export; PNG and SVG pictures keep the diagram inside, so they can
+          be opened and edited again</li>
+    </ul>
+  </description>
+
+  <launchable type="desktop-id">io.github.quezka.Ligature.desktop</launchable>
+  <provides>
+    <binary>ligature</binary>
+    <mediatype>application/x-ligature</mediatype>
+  </provides>
+
+  <url type="homepage">https://github.com/Quezka/ligature</url>
+  <url type="bugtracker">https://github.com/Quezka/ligature/issues</url>
+
+  <categories>
+    <category>Office</category>
+    <category>Education</category>
+  </categories>
+  <keywords>
+    <keyword>diagram</keyword>
+    <keyword>ER</keyword>
+    <keyword>UML</keyword>
+    <keyword>SQL</keyword>
+    <keyword>database</keyword>
+  </keywords>
+
+  <content_rating type="oars-1.1"/>
+  <branding>
+    <color type="primary" scheme_preference="light">#dbe4ff</color>
+    <color type="primary" scheme_preference="dark">#1e3a8a</color>
+  </branding>
+
+  <!-- Newest first. Every released version needs an entry; tests enforce it. -->
+  <releases>
+    <release version="0.1.0" date="2026-09-30">
+      <description>
+        <p>First release: ER diagrams (Chen and crow's foot) with SQL, UML class diagrams,
+          and editable PNG/SVG exports.</p>
+      </description>
+    </release>
+  </releases>
+</component>

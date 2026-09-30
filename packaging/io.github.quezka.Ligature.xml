@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The .ligature file type, so file managers open diagrams with Ligature. -->
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x-ligature">
+    <comment>Ligature diagram</comment>
+    <comment xml:lang="ru">Диаграмма Ligature</comment>
+    <comment xml:lang="it">Diagramma Ligature</comment>
+    <sub-class-of type="application/json"/>
+    <icon name="io.github.quezka.Ligature"/>
+    <glob pattern="*.ligature"/>
+  </mime-type>
+</mime-info>

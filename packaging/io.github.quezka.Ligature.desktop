@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Ligature
+GenericName=Diagram Editor
+Comment=ER and UML class diagrams for school, with SQL
+Exec=ligature %f
+Icon=io.github.quezka.Ligature
+Terminal=false
+Categories=Office;Education;Development;Database;
+Keywords=diagram;er;entity;relationship;uml;class;database;sql;school;
+MimeType=application/x-ligature;
