@@ -126,10 +126,14 @@ def pixmap(name: str, color: str, size: int = 18, stroke: float = 2.0) -> QPixma
     return pm
 
 
-def icon(name: str, color: str, checked_color: str | None = None, size: int = 18) -> QIcon:
+def icon(name: str, color: str, checked_color: str | None = None, size: int = 18,
+         disabled_color: str | None = None) -> QIcon:
     result = QIcon(pixmap(name, color, size))
     if checked_color:
         result.addPixmap(pixmap(name, checked_color, size), QIcon.Normal, QIcon.On)
+    if disabled_color:
+        for state in (QIcon.Off, QIcon.On):
+            result.addPixmap(pixmap(name, disabled_color, size), QIcon.Disabled, state)
     return result
 
 

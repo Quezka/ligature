@@ -156,7 +156,11 @@ class MainWindow(QMainWindow):
         editor = self.editor
         open_ = editor.is_open
         for page in (self.DIAGRAM, self.SQL):
-            self.sidebar.group.button(page).setEnabled(open_)
+            button = self.sidebar.group.button(page)
+            button.setEnabled(open_)
+            text = _(self.PAGES[page][1])
+            button.setToolTip(f"{text}  (Ctrl+{page + 1})" if open_ else
+                              _("{page}: start or open a diagram first").format(page=text))
         self.sidebar.group.button(self.SQL).setVisible(not open_ or editor.kind is DiagramKind.ER)
         if not open_:
             self.setWindowTitle(_("Ligature"))

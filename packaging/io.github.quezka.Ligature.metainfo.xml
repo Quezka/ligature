@@ -57,6 +57,11 @@
 
   <!-- Newest first. Every released version needs an entry; tests enforce it. -->
   <releases>
+    <release version="0.2.1" date="2026-09-30">
+      <description>
+        <p>Pages you can't use yet are clearly greyed out in the sidebar.</p>
+      </description>
+    </release>
     <release version="0.2.0" date="2026-09-30">
       <description>
         <p>Generalisations (ISA) with their translation to tables, copy and paste, warnings

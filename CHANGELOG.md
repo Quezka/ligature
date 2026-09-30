@@ -4,6 +4,12 @@ All notable changes to Ligature. Versions follow [Semantic Versioning](https://s
 patch for fixes, minor for new features, major for breaking changes (while below 1.0,
 breaking changes bump the minor version).
 
+## [0.2.1] - 2026-09-30
+
+### Fixed
+- Before a diagram is open, the Diagram and SQL pages in the sidebar are clearly greyed
+  out (text and icon), and hovering them says to start or open a diagram first.
+
 ## [0.2.0] - 2026-09-30
 
 ### Added

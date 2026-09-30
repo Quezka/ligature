@@ -315,4 +315,5 @@ MESSAGES = {
     "You have {version}. Here's what's new:": 'У вас версия {version}. Что нового:',
     'Check for new versions once a day': 'Проверять новые версии раз в день',
     'You have version {version}.': 'У вас версия {version}.',
+    "{page}: start or open a diagram first": "{page}: сначала создайте или откройте диаграмму",
 }

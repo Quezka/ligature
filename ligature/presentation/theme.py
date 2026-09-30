@@ -114,12 +114,18 @@ def themed(apply) -> None:
         _manager.changed.connect(safe)
 
 
+def disabled(t: Theme) -> str:
+    """Text and icons of things you can't use yet: clearly paler than muted text."""
+    return "#4a4e57" if t.dark else "#bcc0c8"
+
+
 def set_icon(widget, name: str, role: str = "muted", checked_role: str | None = None,
              size: int = 18) -> None:
     """Give a button a line icon that recolours with the theme."""
     def apply(t: Theme):
         widget.setIcon(icons.icon(name, getattr(t, role),
-                                  getattr(t, checked_role) if checked_role else None, size))
+                                  getattr(t, checked_role) if checked_role else None, size,
+                                  disabled(t)))
     themed(apply)
 
 
@@ -161,6 +167,7 @@ def stylesheet(t: Theme) -> str:
                        padding: 8px 12px; color: {t.muted}; text-align: left;
                        font-weight: 500; }}
     QToolButton#nav:hover {{ background: {t.hover}; color: {t.text}; }}
+    QToolButton#nav:disabled {{ color: {disabled(t)}; background: transparent; }}
     QToolButton#nav:checked {{ background: {t.accent_soft}; color: {t.accent};
                                font-weight: 600; }}
 
