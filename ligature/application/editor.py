@@ -8,17 +8,19 @@ from pathlib import Path
 from typing import Callable
 
 from ..domain import (
-    Attribute, Cardinality, ClassKind, Diagram, DiagramKind, Entity, Link, LinkKind, Member,
-    Notation, Participant, Point, Relationship, UmlClass, unique_name,
+    Attribute, Cardinality, ClassKind, Diagram, DiagramKind, Entity, Generalisation, Link,
+    LinkKind, Member, Notation, Participant, Point, Relationship, UmlClass, unique_name,
 )
 from ..domain import Dialect, to_sql, to_tables
 from .errors import NotFound
-from .inputs import AttributeInput, ClassInput, EntityInput, LinkInput, RelationshipInput
+from .inputs import (
+    AttributeInput, ClassInput, EntityInput, GeneralisationInput, LinkInput, RelationshipInput,
+)
 from .ports import DiagramFiles, FileFormat
 from .records import (
-    AttributeRecord, ClassRecord, ColumnRecord, DiagramRecord, EntityRecord, IssueRecord,
-    LinkRecord, MemberRecord, ParticipantRecord, ReferenceRecord, RelationshipRecord,
-    SchemaRecord, TableRecord,
+    AttributeRecord, ClassRecord, ColumnRecord, DiagramRecord, EntityRecord,
+    GeneralisationRecord, IssueRecord, LinkRecord, MemberRecord, ParticipantRecord,
+    ReferenceRecord, RelationshipRecord, SchemaRecord, TableRecord,
 )
 
 HISTORY = 200  # undo steps kept
@@ -208,37 +210,84 @@ class Editor:
 
     def duplicate(self, ids, offset: float = 30) -> list[str]:
         """Copies of the given entities or classes (with what joins only them)."""
+        return self._insert(self._part(set(ids)), offset, offset)
+
+    def copy(self, ids) -> bytes:
+        """The selected items as a diagram of their own, for the clipboard."""
+        return self._files.encode(self._part(set(ids)), FileFormat.LIGATURE)
+
+    def paste(self, data: bytes, x: float | None = None, y: float | None = None) -> list[str]:
+        """Add copied items (from this diagram or another of the same kind): centred on
+        (x, y) if given, else a little below and right of where they were."""
+        part = self._files.decode(data)
+        if part.kind is not self._diagram.kind:
+            raise NotFound("Those items belong in a different kind of diagram.")
+        nodes = [*part.entities, *part.relationships, *part.classes]
+        if not nodes:
+            return []
+        if x is None or y is None:
+            dx = dy = 30.0
+        else:
+            dx = x - sum(n.pos.x for n in nodes) / len(nodes)
+            dy = y - sum(n.pos.y for n in nodes) / len(nodes)
+        return self._insert(part, round(dx / 10) * 10, round(dy / 10) * 10)
+
+    def _part(self, ids: set[str]) -> Diagram:
+        """The chosen entities or classes, and whatever joins only them."""
         d = self._diagram
-        mapping: dict[str, str] = {}
-        for e in d.entities:
-            if e.id in ids:
-                mapping[e.id] = self._new_id()
-                d = d.put(replace(e, id=mapping[e.id], name=unique_name(
-                    e.name, [x.name for x in d.entities]),
-                    pos=Point(e.pos.x + offset, e.pos.y + offset)))
-        for c in self._diagram.classes:
-            if c.id in ids:
-                mapping[c.id] = self._new_id()
-                d = d.put(replace(c, id=mapping[c.id], name=unique_name(
-                    c.name, [x.name for x in d.classes]),
-                    pos=Point(c.pos.x + offset, c.pos.y + offset)))
-        for r in self._diagram.relationships:
-            if r.id in ids or all(p.entity_id in mapping for p in r.participants):
-                if not all(p.entity_id in mapping for p in r.participants):
-                    continue
-                mapping[r.id] = self._new_id()
-                d = d.put(replace(
-                    r, id=mapping[r.id],
-                    participants=tuple(replace(p, entity_id=mapping[p.entity_id])
-                                       for p in r.participants),
-                    pos=Point(r.pos.x + offset, r.pos.y + offset)))
-        for link in self._diagram.links:
-            if link.source in mapping and link.target in mapping:
-                mapping[link.id] = self._new_id()
-                d = d.put(replace(link, id=mapping[link.id], source=mapping[link.source],
-                                  target=mapping[link.target]))
+        entities = tuple(e for e in d.entities if e.id in ids)
+        kept = {e.id for e in entities}
+        classes = tuple(c for c in d.classes if c.id in ids)
+        kept_classes = {c.id for c in classes}
+        return Diagram(
+            d.kind, "", d.notation, entities,
+            tuple(r for r in d.relationships
+                  if r.participants and all(p.entity_id in kept for p in r.participants)),
+            classes,
+            tuple(link for link in d.links
+                  if link.source in kept_classes and link.target in kept_classes),
+            tuple(replace(g, children=tuple(c for c in g.children if c in kept))
+                  for g in d.generalisations
+                  if g.parent in kept and any(c in kept for c in g.children)))
+
+    def _insert(self, part: Diagram, dx: float, dy: float) -> list[str]:
+        """Add a part with new ids (and names that don't clash), moved by (dx, dy)."""
+        d = self._diagram
+        new: dict[str, str] = {}
+
+        def moved(p: Point) -> Point:
+            return Point(p.x + dx, p.y + dy)
+
+        for e in part.entities:
+            new[e.id] = self._new_id()
+            d = d.put(replace(e, id=new[e.id], pos=moved(e.pos),
+                              name=unique_name(e.name, [x.name for x in d.entities])))
+        for c in part.classes:
+            new[c.id] = self._new_id()
+            d = d.put(replace(c, id=new[c.id], pos=moved(c.pos),
+                              name=unique_name(c.name, [x.name for x in d.classes])))
+        for r in part.relationships:
+            new[r.id] = self._new_id()
+            d = d.put(replace(r, id=new[r.id], pos=moved(r.pos), participants=tuple(
+                replace(p, entity_id=new[p.entity_id]) for p in r.participants)))
+        for link in part.links:
+            new[link.id] = self._new_id()
+            d = d.put(replace(link, id=new[link.id], source=new[link.source],
+                              target=new[link.target]))
+        for g in part.generalisations:
+            new[g.id] = self._new_id()
+            d = d.put(replace(g, id=new[g.id], parent=new[g.parent],
+                              children=tuple(new[c] for c in g.children)))
         self._commit(d)
-        return list(mapping.values())
+        return list(new.values())
+
+    def nudge(self, ids, dx: float, dy: float):
+        """Move the selection by a small step (arrow keys)."""
+        d = self._diagram
+        positions = {n.id: Point(n.pos.x + dx, n.pos.y + dy)
+                     for n in (*d.entities, *d.relationships, *d.classes) if n.id in set(ids)}
+        if positions:
+            self._commit(d.moved(positions), group="nudge")
 
     # ---- ER -------------------------------------------------------------------------------
 
@@ -280,6 +329,44 @@ class Editor:
         self._commit(self._diagram.put(replace(
             r, name=data.name.strip() or r.name, participants=tuple(participants),
             attributes=_attributes(data.attributes))), group=f"edit:{id}")
+
+    def add_generalisation(self, child: str, parent: str) -> str:
+        """Make `child` a specialisation of `parent`; it joins the parent's generalisation
+        if it has one. Returns the generalisation's id."""
+        self._get(self._diagram.entity, child)
+        self._get(self._diagram.entity, parent)
+        if child == parent:
+            raise NotFound("An entity can't be a specialisation of itself.")
+        if child in self._ancestors(parent):
+            raise NotFound("That would make a circle of specialisations.")
+        existing = next((g for g in self._diagram.generalisations if g.parent == parent), None)
+        if existing is not None:
+            if child not in existing.children:
+                self._commit(self._diagram.put(replace(existing, children=existing.children + (child,))))
+            return existing.id
+        id = self._new_id()
+        self._commit(self._diagram.put(Generalisation(id, parent, (child,))))
+        return id
+
+    def _ancestors(self, entity: str) -> set[str]:
+        found, frontier = set(), {entity}
+        while frontier:
+            parents = {g.parent for g in self._diagram.generalisations
+                       if frontier & set(g.children)} - found
+            found |= parents
+            frontier = parents
+        return found
+
+    def update_generalisation(self, id: str, data: GeneralisationInput):
+        g = self._get(self._diagram.generalisation, id)
+        known = {e.id for e in self._diagram.entities}
+        children = tuple(c for c in data.children if c in known and c != g.parent)
+        if not children:
+            self._commit(self._diagram.without({id}))
+            return
+        self._commit(self._diagram.put(replace(
+            g, children=children, total=data.total, exclusive=data.exclusive,
+            mapping=data.mapping)), group=f"edit:{id}")
 
     # ---- UML ------------------------------------------------------------------------------
 
@@ -362,6 +449,8 @@ def diagram_record(d: Diagram) -> DiagramRecord:
               for c in d.classes),
         tuple(LinkRecord(link.id, link.kind, link.source, link.target, link.source_multiplicity,
                          link.target_multiplicity, link.label) for link in d.links),
+        tuple(GeneralisationRecord(g.id, g.parent, g.children, g.total, g.exclusive, g.mapping,
+                                   g.label) for g in d.generalisations),
     )
 
 

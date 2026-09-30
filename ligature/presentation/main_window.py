@@ -19,6 +19,7 @@ from .export import pdf_bytes, png_bytes, svg_bytes
 from .i18n import N_, _
 from .icons import APP_ICON
 from .settings import SettingsDialog
+from .updates_ui import UpdateChecker
 from .views.diagram import DiagramPage
 from .views.home import HomePage
 from .views.sql import SqlPage
@@ -122,6 +123,7 @@ class MainWindow(QMainWindow):
         self.diagram.exportRequested.connect(self.export)
         self.diagram.problem.connect(lambda text: QMessageBox.warning(self, _("Ligature"), text))
         self.sql.saveRequested.connect(self.save_sql)
+        self.updater = UpdateChecker(services, self)  # not `update`: that's QWidget's
         self._shortcuts()
 
         settings = QSettings()
@@ -201,10 +203,11 @@ class MainWindow(QMainWindow):
             self.diagram.view.centerOn(300, 250)
             self.show_page(self.DIAGRAM)
 
-    def open_sample(self, kind: DiagramKind):
-        from ..demo import school_er, shapes_uml
+    def open_sample(self, name: str):
+        from ..demo import school_er, shapes_uml, university_er
         if self.maybe_keep_changes():
-            (school_er if kind is DiagramKind.ER else shapes_uml)(self.editor)
+            {"school": school_er, "university": university_er,
+             "shapes": shapes_uml}[name](self.editor)
             self.diagram.refresh(fit=True)
             self.show_page(self.DIAGRAM)
 
@@ -373,6 +376,7 @@ class MainWindow(QMainWindow):
             (_("Copy as picture"), "Ctrl+Shift+C", lambda: self.export("copy")),
             None,
             (_("Settings…"), "Ctrl+,", self.open_settings),
+            (_("Check for updates…"), None, lambda: self.updater.check_now()),
             (_("Keyboard shortcuts"), None, self.show_shortcuts),
             (_("About Ligature"), None, self.about),
             None,
@@ -391,13 +395,16 @@ class MainWindow(QMainWindow):
         return menu
 
     def open_settings(self):
-        SettingsDialog(self).exec()
+        SettingsDialog(self.services, self.updater, self).exec()
 
     def show_shortcuts(self):
         rows = [("Ctrl+1 / 2 / 3", " / ".join(_(t) for _i, t in self.PAGES)),
                 ("Ctrl+N / Ctrl+Shift+N", _("New ER / UML diagram")),
                 ("Ctrl+O, Ctrl+S, Ctrl+Shift+S", _("Open, save, save as")),
-                ("V, E, R, C, L", _("Tools: select, entity, relationship, class, link")),
+                ("V, E, R, G, C, L", _("Tools: select, entity, relationship, generalisation, "
+                                       "class, link")),
+                ("Ctrl+C / Ctrl+X / Ctrl+V", _("Copy, cut, paste (also into another diagram)")),
+                (_("Arrow keys"), _("Move the selection (with Shift, further)")),
                 (_("Double-click"), _("Add an entity or class, or edit the one clicked")),
                 ("Delete", _("Delete the selection")), ("Ctrl+D", _("Duplicate")),
                 ("Ctrl+Z / Ctrl+Shift+Z", _("Undo / redo")), ("Esc", _("Cancel the tool")),

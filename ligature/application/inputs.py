@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .types import DEFAULT_TYPE, ClassKind, LinkKind
+from .types import DEFAULT_TYPE, ClassKind, LinkKind, Mapping
 
 
 @dataclass(frozen=True)
@@ -49,3 +49,11 @@ class LinkInput:
     source_multiplicity: str = ""
     target_multiplicity: str = ""
     label: str = ""
+
+
+@dataclass(frozen=True)
+class GeneralisationInput:
+    children: tuple[str, ...]
+    total: bool = False
+    exclusive: bool = True
+    mapping: Mapping = Mapping.SEPARATE

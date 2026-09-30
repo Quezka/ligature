@@ -130,3 +130,70 @@ def test_identifiers_are_made_safe():
     assert identifier("Città di nascita") == "Citta_di_nascita"
     assert identifier("1° anno") == "_1_anno"
     assert identifier("  ") == "unnamed"
+
+
+# ---- generalisations ------------------------------------------------------------------------
+
+from ligature.domain import Generalisation, Mapping  # noqa: E402
+
+PERSONA = entity("p", "Persona", Attribute("cf", "CHAR(16)", key=True), Attribute("nome"))
+STUD = entity("s", "Studente", Attribute("matricola", "CHAR(6)"))
+DOC = entity("d", "Docente", Attribute("materia"))
+CORSO = entity("k", "Corso", Attribute("codice", key=True))
+
+
+def isa(mapping, total=True, exclusive=True):
+    return Generalisation("g", "p", ("s", "d"), total, exclusive, mapping)
+
+
+def test_generalisation_separate_tables_share_the_parents_key():
+    t, issues = tables(er(PERSONA, STUD, DOC, isa(Mapping.SEPARATE)))
+    assert not issues and set(t) == {"Persona", "Studente", "Docente"}
+    assert t["Studente"].primary_key == ("cf",)
+    assert t["Studente"].foreign_keys[0].table == "Persona"
+    assert [c.name for c in t["Studente"].columns] == ["cf", "matricola"]
+
+
+def test_generalisation_into_the_parent():
+    d = er(PERSONA, STUD, DOC, CORSO, isa(Mapping.INTO_PARENT),
+           rel("r", "Segue", ("s", ONE_MANY), ("k", MANY)))
+    t, issues = tables(d)
+    assert not issues and set(t) == {"Persona", "Corso", "Segue"}
+    columns = {c.name: c for c in t["Persona"].columns}
+    assert columns["matricola"].nullable and columns["materia"].nullable
+    assert not columns["tipo"].nullable  # total: every person is one of them
+    assert "cf_persona" in [c.name for c in t["Segue"].columns]  # the relationship moved up
+    overlapping, _ = tables(er(PERSONA, STUD, DOC, isa(Mapping.INTO_PARENT, exclusive=False)))
+    assert {"is_studente", "is_docente"} <= {c.name for c in overlapping["Persona"].columns}
+
+
+def test_generalisation_into_the_children():
+    t, issues = tables(er(PERSONA, STUD, DOC, isa(Mapping.INTO_CHILDREN)))
+    assert not issues and set(t) == {"Studente", "Docente"}
+    assert t["Docente"].primary_key == ("cf",)
+    assert [c.name for c in t["Docente"].columns] == ["cf", "nome", "materia"]
+
+
+def test_merging_into_children_needs_a_total_generalisation_without_relationships():
+    t, issues = tables(er(PERSONA, STUD, DOC, isa(Mapping.INTO_CHILDREN, total=False)))
+    assert issues[0].kind is IssueKind.CHILDREN_NEED_TOTAL and "Persona" in t
+    d = er(PERSONA, STUD, DOC, CORSO, isa(Mapping.INTO_CHILDREN),
+           rel("r", "Frequenta", ("p", MANY), ("k", MANY)))
+    t, issues = tables(d)
+    assert issues[0].kind is IssueKind.CHILDREN_NEED_NO_RELATIONSHIPS and "Persona" in t
+
+
+def test_nested_generalisations():
+    ric = entity("x", "Ricercatore", Attribute("area"))
+    d = er(PERSONA, STUD, DOC, ric, isa(Mapping.INTO_PARENT),
+           Generalisation("g2", "d", ("x",), mapping=Mapping.INTO_PARENT))
+    t, _ = tables(d)
+    assert set(t) == {"Persona"}
+    assert {"area", "materia", "matricola"} <= {c.name for c in t["Persona"].columns}
+
+
+def test_deleting_entities_keeps_generalisations_consistent():
+    d = er(PERSONA, STUD, DOC, isa(Mapping.SEPARATE))
+    assert d.without({"s"}).generalisations[0].children == ("d",)
+    assert d.without({"s", "d"}).generalisations == ()
+    assert d.without({"p"}).generalisations == ()

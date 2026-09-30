@@ -4,8 +4,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .editor import Editor
+from .updates import AvailableUpdate, UpdateService
 
 
 @dataclass
 class Services:
     editor: Editor
+    updates: UpdateService
+
+
+__all__ = ["AvailableUpdate", "Services"]

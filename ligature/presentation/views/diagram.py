@@ -1,10 +1,10 @@
 """The drawing page: tools on top, the canvas, and the properties panel beside it."""
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QKeySequence, QShortcut
-from shiboken6 import isValid
+from PySide6.QtCore import QMimeData, Qt, Signal
+from PySide6.QtGui import QCursor, QGuiApplication, QKeySequence, QShortcut
 from PySide6.QtWidgets import QButtonGroup, QHBoxLayout, QMenu, QToolButton, QWidget
+from shiboken6 import isValid
 
 from ...application.errors import ApplicationError
 from ...application.services import Services
@@ -14,6 +14,8 @@ from ..canvas import DiagramScene, DiagramView, Tool, style_for
 from ..i18n import _
 from ..properties import LINK_KINDS, PropertiesPanel
 from .common import Card, Page, icon_button, label, primary_button
+
+CLIPBOARD = "application/x-ligature"  # copied diagram items
 
 
 class DiagramPage(Page):
@@ -49,6 +51,7 @@ class DiagramPage(Page):
         self.add_actions(self.undo_button, self.redo_button, export, save)
 
         self.scene = DiagramScene(style_for(theme.current()), parent=self)
+        self.scene.no_key_warning = _("No key: mark its identifier with the key icon.")
         self.view = DiagramView(self.scene)
         theme.themed(self._restyle)
 
@@ -63,6 +66,7 @@ class DiagramPage(Page):
                 (Tool.SELECT, "pointer", _("Select and move"), "V"),
                 (Tool.ENTITY, "entity", _("Entity"), "E"),
                 (Tool.RELATIONSHIP, "relationship", _("Relationship"), "R"),
+                (Tool.GENERALISATION, "inherit", _("Generalisation"), "G"),
                 (Tool.CLASS, "class", _("Class"), "C"),
                 (Tool.LINK, "link", _("Link"), "L")):
             b = QToolButton(objectName="tool", text=text, checkable=True)
@@ -127,8 +131,16 @@ class DiagramPage(Page):
         for keys, slot in ((QKeySequence.Delete, self.delete_selection),
                            (QKeySequence(Qt.Key_Backspace), self.delete_selection),
                            (QKeySequence("Ctrl+D"), self.duplicate_selection),
+                           (QKeySequence.Copy, self.copy_selection),
+                           (QKeySequence.Cut, self.cut_selection),
+                           (QKeySequence.Paste, self.paste),
                            (QKeySequence.SelectAll, self._select_all)):
             QShortcut(keys, self.view, activated=slot, context=Qt.WidgetShortcut)
+        for key, dx, dy in ((Qt.Key_Left, -1, 0), (Qt.Key_Right, 1, 0), (Qt.Key_Up, 0, -1),
+                            (Qt.Key_Down, 0, 1)):
+            for mods, step in ((Qt.NoModifier, 10), (Qt.ShiftModifier, 50)):
+                QShortcut(QKeySequence(key | mods), self.view, context=Qt.WidgetShortcut,
+                          activated=lambda dx=dx * step, dy=dy * step: self._nudge(dx, dy))
         for keys, slot in (("Ctrl+=", self.view.zoom_in), ("Ctrl++", self.view.zoom_in),
                            ("Ctrl+-", self.view.zoom_out), ("Ctrl+0", self.view.fit)):
             QShortcut(QKeySequence(keys), self, activated=slot,
@@ -145,7 +157,7 @@ class DiagramPage(Page):
     def refresh(self, fit: bool = False):
         record = self.editor.diagram()
         er = record.kind is DiagramKind.ER
-        for tool in (Tool.ENTITY, Tool.RELATIONSHIP):
+        for tool in (Tool.ENTITY, Tool.RELATIONSHIP, Tool.GENERALISATION):
             self.tool_buttons[tool].setVisible(er)
         for tool in (Tool.CLASS, Tool.LINK):
             self.tool_buttons[tool].setVisible(not er)
@@ -174,6 +186,7 @@ class DiagramPage(Page):
             Tool.ENTITY: _("Click where the entity goes."),
             Tool.CLASS: _("Click where the class goes."),
             Tool.RELATIONSHIP: _("Click the first entity."),
+            Tool.GENERALISATION: _("Click the specialised entity (the child)."),
             Tool.LINK: _("Click the first class."),
         }[tool])
 
@@ -185,6 +198,8 @@ class DiagramPage(Page):
         if self.scene.tool is Tool.RELATIONSHIP:
             return _("Now click the second entity (the same one again for a recursive "
                      "relationship). Esc cancels.")
+        if self.scene.tool is Tool.GENERALISATION:
+            return _("Now click the parent entity. Esc cancels.")
         if self.link_kind in (LinkKind.INHERITANCE, LinkKind.REALIZATION):
             return _("Now click the parent class or interface. Esc cancels.")
         return _("Now click the second class. Esc cancels.")
@@ -217,6 +232,8 @@ class DiagramPage(Page):
         if self.scene.tool is Tool.RELATIONSHIP:
             id = self._try(lambda: self.editor.add_relationship([first, second],
                                                                  _("Relationship")))
+        elif self.scene.tool is Tool.GENERALISATION:
+            id = self._try(lambda: self.editor.add_generalisation(first, second))
         else:
             id = self._try(lambda: self.editor.add_link(self.link_kind, first, second))
         self.set_tool(Tool.SELECT)
@@ -239,6 +256,41 @@ class DiagramPage(Page):
             if new:
                 self.scene.select_only(new)
 
+    def copy_selection(self) -> bool:
+        ids = self.scene.selected_ids()
+        if not ids:
+            return False
+        mime = QMimeData()
+        mime.setData(CLIPBOARD, self.editor.copy(ids))
+        QGuiApplication.clipboard().setMimeData(mime)
+        return True
+
+    def cut_selection(self):
+        if self.copy_selection():
+            self.delete_selection()
+
+    def paste(self):
+        """Items copied here or in another diagram; or the diagram inside a Ligature picture
+        (e.g. copied from a note)."""
+        mime = QGuiApplication.clipboard().mimeData()
+        data = bytes(mime.data(CLIPBOARD)) if mime.hasFormat(CLIPBOARD) else (
+            bytes(mime.data("image/png")) if mime.hasFormat("image/png") else b"")
+        if not data:
+            return
+        under = self.view.mapFromGlobal(QCursor.pos())
+        if self.view.viewport().rect().contains(under):
+            at = self.view.mapToScene(under)
+            new = self._try(lambda: self.editor.paste(data, at.x(), at.y()))
+        else:
+            new = self._try(lambda: self.editor.paste(data))
+        if new:
+            self.scene.select_only(new)
+
+    def _nudge(self, dx: float, dy: float):
+        ids = self.scene.selected_ids()
+        if ids:
+            self._try(lambda: self.editor.nudge(ids, dx, dy))
+
     def _select_all(self):
         self.scene.select_only(list(self.scene.nodes) + list(self.scene.links))
 
@@ -249,6 +301,8 @@ class DiagramPage(Page):
         if item_ids:
             if item_ids[0] not in self.scene.selected_ids():
                 self.scene.select_only(item_ids[:1])
+            menu.addAction(_("Copy"), self.copy_selection)
+            menu.addAction(_("Cut"), self.cut_selection)
             menu.addAction(_("Duplicate"), self.duplicate_selection)
             menu.addAction(_("Delete"), self.delete_selection)
         else:
@@ -258,6 +312,7 @@ class DiagramPage(Page):
                 menu.addAction(_("Add an entity here"), lambda: self._add(Tool.ENTITY, x, y))
             else:
                 menu.addAction(_("Add a class here"), lambda: self._add(Tool.CLASS, x, y))
+            menu.addAction(_("Paste"), self.paste)
             menu.addSeparator()
             menu.addAction(_("Fit the diagram"), self.view.fit)
         menu.exec(self.view.viewport().mapToGlobal(pos))

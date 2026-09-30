@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .types import ClassKind, DiagramKind, IssueKind, LinkKind, Notation
+from .types import ClassKind, DiagramKind, IssueKind, LinkKind, Mapping, Notation
 
 
 @dataclass(frozen=True)
@@ -75,6 +75,17 @@ class LinkRecord:
 
 
 @dataclass(frozen=True)
+class GeneralisationRecord:
+    id: str
+    parent: str
+    children: tuple[str, ...]
+    total: bool
+    exclusive: bool
+    mapping: Mapping
+    label: str  # "(t,e)"
+
+
+@dataclass(frozen=True)
 class DiagramRecord:
     kind: DiagramKind
     title: str
@@ -83,9 +94,11 @@ class DiagramRecord:
     relationships: tuple[RelationshipRecord, ...] = ()
     classes: tuple[ClassRecord, ...] = ()
     links: tuple[LinkRecord, ...] = ()
+    generalisations: tuple[GeneralisationRecord, ...] = ()
 
     def find(self, id: str):
-        for group in (self.entities, self.relationships, self.classes, self.links):
+        for group in (self.entities, self.relationships, self.classes, self.links,
+                      self.generalisations):
             for item in group:
                 if item.id == id:
                     return item

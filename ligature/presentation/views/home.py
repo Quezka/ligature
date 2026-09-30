@@ -17,7 +17,7 @@ from .common import Card, Page, button, label
 class HomePage(Page):
     newRequested = Signal(object)  # DiagramKind
     openRequested = Signal(str)  # a path, or "" to choose one
-    sampleRequested = Signal(object)  # DiagramKind
+    sampleRequested = Signal(str)  # "school", "university" or "shapes"
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -48,13 +48,14 @@ class HomePage(Page):
         samples = label(_("Or look around a sample first:"), "hint")
         start.add(samples)
         row = QGridLayout()
-        er = button(_("School register (ER)"), "database")
-        uml = button(_("Geometric shapes (UML)"), "class")
-        er.clicked.connect(lambda: self.sampleRequested.emit(DiagramKind.ER))
-        uml.clicked.connect(lambda: self.sampleRequested.emit(DiagramKind.UML))
-        row.addWidget(er, 0, 0)
-        row.addWidget(uml, 0, 1)
-        row.setColumnStretch(2, 1)
+        for column, (name, text, icon) in enumerate((
+                ("school", _("School register (ER)"), "database"),
+                ("university", _("University, with a generalisation (ER)"), "inherit"),
+                ("shapes", _("Geometric shapes (UML)"), "class"))):
+            sample = button(text, icon)
+            sample.clicked.connect(lambda _c=False, n=name: self.sampleRequested.emit(n))
+            row.addWidget(sample, 0, column)
+        row.setColumnStretch(3, 1)
         start.body.addLayout(row)
 
         recent = Card(_("Recent"))

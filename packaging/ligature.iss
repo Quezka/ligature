@@ -72,3 +72,5 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopico
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
+; An update from inside Ligature runs this setup silently: start Ligature again when it's done.
+Filename: "{app}\{#AppExe}"; Flags: nowait skipifnotsilent

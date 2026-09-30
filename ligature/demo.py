@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from .application.editor import Editor
 from .application.inputs import (
-    AttributeInput as A, ClassInput, EntityInput, LinkInput, ParticipantInput as P,
-    RelationshipInput,
+    AttributeInput as A, ClassInput, EntityInput, GeneralisationInput, LinkInput,
+    ParticipantInput as P, RelationshipInput,
 )
-from .application.types import ClassKind, DiagramKind, LinkKind
+from .application.types import ClassKind, DiagramKind, LinkKind, Mapping
 
 
 def school_er(editor: Editor):
@@ -37,6 +37,33 @@ def school_er(editor: Editor):
     coordina = editor.add_relationship([docente, classe], "Coordina")
     editor.update_relationship(coordina, RelationshipInput("Coordina", (
         P(docente, "(0,1)"), P(classe, "(1,1)"))))
+    _settled(editor)
+
+
+def university_er(editor: Editor):
+    """People who are students or teachers (a generalisation), courses and exams."""
+    editor.new(DiagramKind.ER, "Università")
+    persona = editor.add_entity(400, 100, "Persona")
+    studente = editor.add_entity(200, 330, "Studente")
+    docente = editor.add_entity(600, 330, "Docente")
+    corso = editor.add_entity(400, 580, "Corso")
+    editor.update_entity(persona, EntityInput("Persona", (
+        A("cf", "CHAR(16)", key=True), A("nome"), A("cognome"), A("email", optional=True))))
+    editor.update_entity(studente, EntityInput("Studente", (A("matricola", "CHAR(8)"),
+                                                            A("anno_corso", "INT"))))
+    editor.update_entity(docente, EntityInput("Docente", (A("ruolo"),)))
+    editor.update_entity(corso, EntityInput("Corso", (A("codice", "CHAR(6)", key=True),
+                                                      A("titolo"), A("cfu", "INT"))))
+    g = editor.add_generalisation(studente, persona)
+    editor.add_generalisation(docente, persona)
+    editor.update_generalisation(g, GeneralisationInput((studente, docente), total=False,
+                                                        exclusive=True, mapping=Mapping.SEPARATE))
+    esame = editor.add_relationship([studente, corso], "Esame")
+    editor.update_relationship(esame, RelationshipInput("Esame", (
+        P(studente, "(0,N)"), P(corso, "(0,N)")), (A("voto", "INT"), A("data", "DATE"))))
+    tiene = editor.add_relationship([docente, corso], "Tiene")
+    editor.update_relationship(tiene, RelationshipInput("Tiene", (
+        P(docente, "(0,N)"), P(corso, "(1,1)"))))
     _settled(editor)
 
 

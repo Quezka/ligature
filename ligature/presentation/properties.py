@@ -13,19 +13,23 @@ from PySide6.QtWidgets import (
 
 from ..application.errors import ApplicationError
 from ..application.inputs import (
-    AttributeInput, ClassInput, EntityInput, LinkInput, ParticipantInput, RelationshipInput,
+    AttributeInput, ClassInput, EntityInput, GeneralisationInput, LinkInput, ParticipantInput,
+    RelationshipInput,
 )
 from ..application.records import (
-    ClassRecord, DiagramRecord, EntityRecord, LinkRecord, RelationshipRecord,
+    ClassRecord, DiagramRecord, EntityRecord, GeneralisationRecord, LinkRecord, RelationshipRecord,
 )
 from ..application.services import Services
 from ..application.types import (
     CARDINALITIES, DEFAULT_TYPE, MULTIPLICITIES, SQL_TYPES, ClassKind, DiagramKind, LinkKind,
-    Notation,
+    Mapping, Notation,
 )
 from .i18n import N_, _, plural
 from .views.common import Segmented, button, caption, icon_button, label
 
+MAPPINGS = [(Mapping.SEPARATE, N_("A table for each (children use the parent's key)")),
+            (Mapping.INTO_PARENT, N_("One table: children merged into the parent")),
+            (Mapping.INTO_CHILDREN, N_("A table per child: parent merged into them"))]
 CLASS_KINDS = [(ClassKind.CLASS, N_("Class")), (ClassKind.ABSTRACT, N_("Abstract class")),
                (ClassKind.INTERFACE, N_("Interface")), (ClassKind.ENUM, N_("Enumeration"))]
 LINK_KINDS = [(LinkKind.ASSOCIATION, N_("Association")),
@@ -495,6 +499,75 @@ class LinkPanel(SectionPanel):
             self.send(lambda: self.editor.update_link(self.id, data))
 
 
+class GeneralisationPanel(SectionPanel):
+    def __init__(self, services, parent=None):
+        super().__init__(services, parent)
+        self.parent_label = QLabel(objectName="sheetTitle", wordWrap=True)
+        self.children_box = QVBoxLayout()
+        self.children_box.setSpacing(4)
+        self.coverage = Segmented([(True, _("Total")), (False, _("Partial"))])
+        self.overlap = Segmented([(True, _("Exclusive")), (False, _("Overlapping"))])
+        self.mapping = _combo(MAPPINGS)
+        self.coverage.changed.connect(lambda _v: self.commit())
+        self.overlap.changed.connect(lambda _v: self.commit())
+        self.mapping.currentIndexChanged.connect(lambda _i: self.commit())
+        hint = label(_("Total (t): every parent is also one of the children; partial (p): not "
+                       "necessarily. Exclusive (e): at most one child; overlapping (s): maybe "
+                       "several. To add a child, pick Generalisation in the toolbar and click "
+                       "the child, then the parent."), "hint")
+        hint.setWordWrap(True)
+        mapping_hint = label(_("Merging into the children needs a total generalisation whose "
+                               "parent takes part in no relationship."), "hint")
+        mapping_hint.setWordWrap(True)
+        holder = QWidget()
+        holder.setLayout(self.children_box)
+        for w in (caption(_("Generalisation")), self.parent_label, caption(_("Specialisations")),
+                  holder, self.coverage, self.overlap, hint, caption(_("As tables")),
+                  self.mapping, mapping_hint, self.error):
+            self.layout_.addWidget(w)
+        self.layout_.addStretch()
+        self._loading = False
+        self.children: tuple[str, ...] = ()
+
+    def load(self, g: GeneralisationRecord, names: dict[str, str]):
+        self._loading = True
+        self.id = g.id
+        self.children = g.children
+        self.parent_label.setText(_("Specialisations of {parent}").format(
+            parent=names.get(g.parent, "?")))
+        while self.children_box.count():
+            item = self.children_box.takeAt(0)
+            if item.layout():
+                while item.layout().count():
+                    w = item.layout().takeAt(0).widget()
+                    if w:
+                        w.deleteLater()
+            elif item.widget():
+                item.widget().deleteLater()
+        for child in g.children:
+            row = QHBoxLayout()
+            row.addWidget(QLabel(names.get(child, "?")), 1)
+            remove = icon_button("x", _("No longer a specialisation"))
+            remove.clicked.connect(lambda _c=False, c=child: self._remove(c))
+            row.addWidget(remove)
+            self.children_box.addLayout(row)
+        self.coverage.set_value(g.total)
+        self.overlap.set_value(g.exclusive)
+        _select(self.mapping, g.mapping)
+        self._loading = False
+
+    def _remove(self, child: str):
+        self.children = tuple(c for c in self.children if c != child)
+        self.commit()
+
+    def commit(self):
+        if self.id and not self._loading:
+            data = GeneralisationInput(self.children, bool(self.coverage.value()),
+                                       bool(self.overlap.value()), self.mapping.currentData())
+            self.send(lambda: self.editor.update_generalisation(self.id, data))
+            self.done_editing()
+
+
 class ManyPanel(SectionPanel):
     deleteRequested = Signal()
     duplicateRequested = Signal()
@@ -539,11 +612,12 @@ class PropertiesPanel(QScrollArea):
         self.relationship = RelationshipPanel(services)
         self.uml_class = ClassPanel(services)
         self.link = LinkPanel(services)
+        self.generalisation = GeneralisationPanel(services)
         self.many = ManyPanel(services)
         self.many.deleteRequested.connect(self.deleteRequested.emit)
         self.many.duplicateRequested.connect(self.duplicateRequested.emit)
         self.panels = (self.diagram_panel, self.entity, self.relationship, self.uml_class,
-                       self.link, self.many)
+                       self.link, self.generalisation, self.many)
         for panel in self.panels:
             holder = QWidget()
             box = QVBoxLayout(holder)
@@ -578,6 +652,9 @@ class PropertiesPanel(QScrollArea):
         elif isinstance(item, LinkRecord):
             self._show(self.link, item.id)
             self.link.load(item, {c.id: c.name for c in d.classes})
+        elif isinstance(item, GeneralisationRecord):
+            self._show(self.generalisation, item.id)
+            self.generalisation.load(item, {e.id: e.name for e in d.entities})
         else:
             self._show(self.diagram_panel)
             self.diagram_panel.load(d)

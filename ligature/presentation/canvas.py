@@ -18,7 +18,7 @@ from PySide6.QtGui import (
 from PySide6.QtWidgets import QGraphicsItem, QGraphicsScene, QGraphicsView
 
 from ..application.records import (
-    ClassRecord, DiagramRecord, EntityRecord, LinkRecord, RelationshipRecord,
+    ClassRecord, DiagramRecord, EntityRecord, GeneralisationRecord, LinkRecord, RelationshipRecord,
 )
 from ..application.types import ClassKind, DiagramKind, LinkKind, Notation
 from . import theme
@@ -131,6 +131,7 @@ class Node(QGraphicsItem):
         self.style = style
         # Whether lines leave from the top / bottom: Chen attributes go elsewhere.
         self.blocked = blocked
+        self.warning = ""  # set by the scene: something to fix (shown as a badge)
         self.edges: list[Edge] = []
         self.setFlags(QGraphicsItem.ItemIsMovable | QGraphicsItem.ItemIsSelectable
                       | QGraphicsItem.ItemSendsGeometryChanges)
@@ -151,9 +152,6 @@ class Node(QGraphicsItem):
     def scene_outline(self) -> QPolygonF:
         return self.mapToScene(self.outline())
 
-    def boundingRect(self) -> QRectF:
-        return self.bounds.adjusted(-3, -3, 3, 3)
-
     def shape(self) -> QPainterPath:
         path = QPainterPath()
         path.addPolygon(self.outline())
@@ -165,6 +163,26 @@ class Node(QGraphicsItem):
             for edge in self.edges:
                 edge.refresh()
         return super().itemChange(change, value)
+
+    def set_warning(self, text: str):
+        self.warning = text
+        self.setToolTip(text)
+
+    def _badge(self, painter: QPainter):
+        """A small amber "!" on the corner of something that needs fixing (never exported)."""
+        scene = self.scene()
+        if not self.warning or scene is None or not getattr(scene, "grid", False):
+            return
+        centre = QPointF(self.body.right() - 2, self.body.top() + 2)
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QColor(self.style.amber))
+        painter.drawEllipse(centre, 8, 8)
+        painter.setPen(QColor("#ffffff"))
+        painter.setFont(_font(9, bold=True))
+        painter.drawText(QRectF(centre.x() - 8, centre.y() - 8, 16, 16), Qt.AlignCenter, "!")
+
+    def boundingRect(self) -> QRectF:  # room for the warning badge
+        return self.bounds.adjusted(-3, -11, 11, 3)
 
     def _border(self, painter: QPainter, width: float = 1.4):
         if self.isSelected():
@@ -266,6 +284,7 @@ class ChenEntity(Node):
         painter.setPen(QColor(s.text))
         painter.setFont(NAME_FONT)
         painter.drawText(self.body, Qt.AlignCenter, r.name)
+        self._badge(painter)
 
 
 class ChenRelationship(Node):
@@ -361,6 +380,7 @@ class TableEntity(Node):
             painter.setFont(SMALL_FONT)
             painter.drawText(row, Qt.AlignVCenter | Qt.AlignRight, kind)
             y += self.ROW
+        self._badge(painter)
 
 
 class CrowRelationship(Node):
@@ -685,6 +705,63 @@ class LinkEdge(Edge):
             self._text(painter, mid + QPointF(0, -10), r.label, font=_font(9, italic=True))
 
 
+class GeneralisationEdge(Edge):
+    """Specialisations joined to their parent by an arrow: filled when total, hollow when
+    partial, with (t,e) / (p,s) beside it."""
+
+    def __init__(self, style, record: GeneralisationRecord, parent: Node, children: list[Node]):
+        super().__init__(style)
+        self.record = record
+        self.id = record.id
+        self.parent_node, self.children = parent, children
+        self.setFlags(QGraphicsItem.ItemIsSelectable)
+        self.attach(parent, *children)
+
+    def compute(self):
+        p = self.parent_node.scenePos()
+        if len(self.children) == 1:
+            junction = self.children[0].scenePos()
+        else:
+            cx = sum(c.scenePos().x() for c in self.children) / len(self.children)
+            cy = sum(c.scenePos().y() for c in self.children) / len(self.children)
+            junction = QPointF(p.x() + (cx - p.x()) * 0.5, p.y() + (cy - p.y()) * 0.5)
+        self.tip = exit_point(self.parent_node.scene_outline(), p, junction)
+        if len(self.children) == 1:
+            junction = exit_point(self.children[0].scene_outline(), junction, p)
+        self.junction = junction
+        path = QPainterPath(self.junction)
+        path.lineTo(self.tip)
+        if len(self.children) > 1:
+            for c in self.children:
+                start = exit_point(c.scene_outline(), c.scenePos(), self.junction)
+                path.moveTo(start)
+                path.lineTo(self.junction)
+        self.path = path
+
+    def shape(self) -> QPainterPath:
+        stroker = QPainterPathStroker()
+        stroker.setWidth(10)
+        return stroker.createStroke(self.path)
+
+    def paint(self, painter, option, widget=None):
+        s = self.style
+        painter.setRenderHint(QPainter.Antialiasing)
+        color = s.accent if self.isSelected() else s.line
+        painter.setPen(pen(color, 2.2 if self.isSelected() else 1.4))
+        painter.setBrush(Qt.NoBrush)
+        painter.drawPath(self.path)
+        u = _unit(self.tip, self.junction)
+        n = _normal(u)
+        base = self.tip + QPointF(u.x() * 14, u.y() * 14)
+        head = QPolygonF([self.tip, base + QPointF(n.x() * 7, n.y() * 7),
+                          base - QPointF(n.x() * 7, n.y() * 7)])
+        painter.setBrush(QColor(color if self.record.total else s.paper))
+        painter.drawPolygon(head)
+        at = self.junction + QPointF(n.x() * 22, n.y() * 22) if len(self.children) > 1 else \
+            (self.tip + self.junction) / 2 + QPointF(n.x() * 22, n.y() * 22)
+        self._text(painter, at, self.record.label, background=False)
+
+
 # ---- the scene --------------------------------------------------------------------------------
 
 class Tool(Enum):
@@ -693,6 +770,7 @@ class Tool(Enum):
     RELATIONSHIP = "relationship"
     CLASS = "class"
     LINK = "link"
+    GENERALISATION = "generalisation"
 
 
 class DiagramScene(QGraphicsScene):
@@ -711,6 +789,7 @@ class DiagramScene(QGraphicsScene):
         self.nodes: dict[str, Node] = {}
         self.links: dict[str, LinkEdge] = {}
         self.record: DiagramRecord | None = None
+        self.no_key_warning = "No key: mark its identifier with the key icon."
         self._first: Node | None = None
         self._rubber = None
         self._press_positions: dict[str, QPointF] = {}
@@ -736,6 +815,16 @@ class DiagramScene(QGraphicsScene):
                 node = self._add_node(ChenRelationship(r, s, blocked.get(r.id, (False, False)))
                                       if chen else CrowRelationship(r, s))
                 self._relationship_edges(r, node, chen)
+            for g in record.generalisations:
+                children = [self.nodes[c] for c in g.children if c in self.nodes]
+                if g.parent in self.nodes and children:
+                    edge = GeneralisationEdge(s, g, self.nodes[g.parent], children)
+                    self.addItem(edge)
+                    self.links[g.id] = edge
+            specialised = {c for g in record.generalisations for c in g.children}
+            for e in record.entities:
+                if not e.weak and e.id not in specialised and not any(a.key for a in e.attributes):
+                    self.nodes[e.id].set_warning(self.no_key_warning)
         else:
             for c in record.classes:
                 self._add_node(ClassBox(c, s))
@@ -794,7 +883,7 @@ class DiagramScene(QGraphicsScene):
     def selected_ids(self) -> list[str]:
         ids = []
         for item in self.selectedItems():
-            if isinstance(item, (Node, LinkEdge)):
+            if isinstance(item, (Node, LinkEdge, GeneralisationEdge)):
                 ids.append(item.id)
         return ids
 
@@ -899,7 +988,7 @@ class DiagramScene(QGraphicsScene):
             return
         pos = event.scenePos()
         for item in self.items(pos):
-            if isinstance(item, (Node, LinkEdge)):
+            if isinstance(item, (Node, LinkEdge, GeneralisationEdge)):
                 self.editRequested.emit(item.id)
                 return
         if self.record is not None:
@@ -945,6 +1034,11 @@ def _blocked_sides(record: DiagramRecord) -> dict[str, tuple[bool, bool]]:
             if p.entity_id in where:
                 mark(r.id, p.entity_id)
                 mark(p.entity_id, r.id)
+    for g in record.generalisations:
+        for c in g.children:
+            if c in where and g.parent in where:
+                mark(c, g.parent)
+                mark(g.parent, c)
     return {id: (top, bottom) for id, (top, bottom) in sides.items()}
 
 

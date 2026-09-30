@@ -1,7 +1,7 @@
 """The enums and fixed choices the UI needs, re-exported so it never imports the domain."""
 from ..domain import (  # noqa: F401
     CARDINALITIES as _CARDINALITIES, DEFAULT_TYPE, MULTIPLICITIES, ClassKind, Dialect,
-    DiagramKind, IssueKind, LinkKind, Notation,
+    DiagramKind, IssueKind, LinkKind, Mapping, Notation,
 )
 from .ports import FileFormat  # noqa: F401
 

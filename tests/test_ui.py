@@ -20,8 +20,12 @@ def window(app, tmp_path, monkeypatch):
     from PySide6.QtCore import QSettings
     QSettings().clear()
     from ligature.bootstrap import build_services
+    from ligature.infrastructure.settings import MemorySettings
+    from ligature.infrastructure.updates import NoInstaller
     from ligature.presentation.main_window import MainWindow
-    w = MainWindow(build_services())
+    from .fakes import FakeReleases
+    w = MainWindow(build_services(settings=MemorySettings(), releases=FakeReleases(),
+                                  installer=NoInstaller()))
     yield w
     w.editor.settle()
     w.close()
@@ -34,7 +38,13 @@ def pump(ms=50):
 
 
 def test_selecting_items_changes_nothing(window):
-    window.open_sample(DiagramKind.ER)
+    window.open_sample("university")
+    before = window.editor.diagram()
+    for item in (*before.entities, *before.relationships, *before.generalisations):
+        window.diagram.scene.select_only([item.id])
+        pump()
+    assert window.editor.diagram() == before and not window.editor.can_undo
+    window.open_sample("school")
     before = window.editor.diagram()
     for item in (*before.entities, *before.relationships):
         window.diagram.scene.select_only([item.id])
@@ -42,7 +52,7 @@ def test_selecting_items_changes_nothing(window):
     window.diagram.scene.select_only([])
     pump()
     assert window.editor.diagram() == before and not window.editor.can_undo
-    window.open_sample(DiagramKind.UML)
+    window.open_sample("shapes")
     before = window.editor.diagram()
     for item in (*before.classes, *before.links):
         window.diagram.scene.select_only([item.id])
@@ -70,7 +80,7 @@ def test_editing_in_the_panel(window):
 
 def test_pages_and_exports(window, tmp_path):
     from ligature.presentation.export import pdf_bytes, png_bytes, svg_bytes
-    window.open_sample(DiagramKind.ER)
+    window.open_sample("school")
     window.show_page(window.SQL)
     assert "CREATE TABLE" in window.sql.sql.toPlainText()
     record = window.editor.diagram()
@@ -81,7 +91,7 @@ def test_pages_and_exports(window, tmp_path):
     assert window._save_to(str(path))
     window.editor.open(str(path))
     assert window.editor.diagram() == record and window.editor.format is FileFormat.PNG
-    window.open_sample(DiagramKind.UML)
+    window.open_sample("shapes")
     window.show_page(window.SQL)
     assert window.sql.empty.isVisibleTo(window.sql)
 
@@ -124,3 +134,42 @@ def test_mouse_places_connects_and_drags(window):
     # Double-click on empty space adds an entity.
     QTest.mouseDClick(view.viewport(), Qt.LeftButton, pos=at(250, 350))
     assert len(window.editor.diagram().entities) == 3
+
+
+def test_copy_paste_and_arrow_keys(window):
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    window.resize(1300, 800)
+    window.show()
+    window.open_sample("university")
+    pump()
+    page = window.diagram
+    person = next(e for e in window.editor.diagram().entities if e.name == "Persona")
+    page.scene.select_only([person.id])
+    page.view.setFocus()
+    QTest.keyClick(page.view, Qt.Key_Right)
+    assert window.editor.diagram().find(person.id).x == person.x + 10
+    assert page.copy_selection()
+    page.paste()
+    names = [e.name for e in window.editor.diagram().entities]
+    assert "Persona 2" in names and len(page.scene.selected_ids()) == 1
+    page.cut_selection()
+    assert "Persona 2" not in [e.name for e in window.editor.diagram().entities]
+
+
+def test_generalisation_tool_and_panel(window):
+    from ligature.presentation.canvas import Tool
+    from ligature.application.types import Mapping
+    window.new_diagram(DiagramKind.ER)
+    parent = window.editor.add_entity(0, 0, "Veicolo")
+    child = window.editor.add_entity(0, 200, "Auto")
+    window.diagram.set_tool(Tool.GENERALISATION)
+    window.diagram._connect(child, parent)
+    (g,) = window.editor.diagram().generalisations
+    assert window.diagram.scene.selected_ids() == [g.id]
+    panel = window.diagram.panel.generalisation
+    panel.coverage.group.button(0).click()  # total
+    panel.mapping.setCurrentIndex(panel.mapping.findData(Mapping.INTO_PARENT))
+    g = window.editor.diagram().generalisations[0]
+    assert g.total and g.mapping is Mapping.INTO_PARENT and g.label == "(t,e)"
+    assert window.diagram.scene.nodes[parent].warning  # no key yet

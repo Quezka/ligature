@@ -18,8 +18,8 @@ from pathlib import Path
 from ..application.errors import FileAccessError, FileFormatError
 from ..application.ports import FileFormat
 from ..domain import (
-    Attribute, Cardinality, ClassKind, Diagram, DiagramKind, Entity, Link, LinkKind, Member,
-    Notation, Participant, Point, Relationship, UmlClass,
+    Attribute, Cardinality, ClassKind, Diagram, DiagramKind, Entity, Generalisation, Link,
+    LinkKind, Mapping, Member, Notation, Participant, Point, Relationship, UmlClass,
 )
 
 FORMAT = "ligature"
@@ -101,6 +101,10 @@ def to_json(d: Diagram) -> dict:
              "participants": [{"entity": p.entity_id, "cardinality": str(p.cardinality),
                                "role": p.role} for p in r.participants],
              "attributes": _attributes_json(r.attributes)} for r in d.relationships]
+        out["generalisations"] = [
+            {"id": g.id, "parent": g.parent, "children": list(g.children), "total": g.total,
+             "exclusive": g.exclusive, "mapping": g.mapping.value}
+            for g in d.generalisations]
     else:
         out["classes"] = [
             {"id": c.id, "name": c.name, "x": c.pos.x, "y": c.pos.y, "kind": c.kind.value,
@@ -147,6 +151,10 @@ def from_json(data: dict) -> Diagram:
                    str(link["target"]), str(link.get("source_multiplicity", "")),
                    str(link.get("target_multiplicity", "")), str(link.get("label", "")))
               for link in data.get("links", ())),
+        tuple(Generalisation(str(g["id"]), str(g["parent"]), tuple(str(c) for c in g["children"]),
+                             bool(g.get("total")), bool(g.get("exclusive", True)),
+                             Mapping(g.get("mapping", "separate")))
+              for g in data.get("generalisations", ())),
     )
 
 

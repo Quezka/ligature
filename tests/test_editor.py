@@ -192,3 +192,64 @@ def test_schema_record(editor):
     assert schema.issues == () and "CREATE TABLE Valutazione" in schema.sql
     editor.add_entity(0, 0, "Vuota")
     assert editor.schema().issues[0].kind is IssueKind.NO_KEY
+
+
+# ---- generalisations, copy and paste ----------------------------------------------------------
+
+def test_generalisations_are_built_child_by_child(editor, tmp_path):
+    from ligature.application.inputs import GeneralisationInput
+    from ligature.application.types import Mapping
+    editor.new(DiagramKind.ER)
+    person, student, teacher = (editor.add_entity(x, 0, n) for x, n in
+                                ((0, "Persona"), (-100, "Studente"), (100, "Docente")))
+    g = editor.add_generalisation(student, person)
+    assert editor.add_generalisation(teacher, person) == g  # joins the same one
+    record = editor.diagram().generalisations[0]
+    assert record.children == (student, teacher) and record.label == "(p,e)"
+    editor.update_generalisation(g, GeneralisationInput((student, teacher), total=True,
+                                                        exclusive=False, mapping=Mapping.INTO_PARENT))
+    assert editor.diagram().generalisations[0].label == "(t,s)"
+    with pytest.raises(NotFound):
+        editor.add_generalisation(person, student)  # a circle
+    path = tmp_path / "isa.ligature"
+    editor.save(str(path))
+    before = editor.diagram()
+    editor.open(str(path))
+    assert editor.diagram() == before
+    editor.delete([student])
+    assert editor.diagram().generalisations[0].children == (teacher,)
+    editor.update_generalisation(g, GeneralisationInput(()))
+    assert editor.diagram().generalisations == ()
+
+
+def test_copy_and_paste_between_diagrams(editor):
+    school_er(editor)
+    d = editor.diagram()
+    student = next(e.id for e in d.entities if e.name == "Studente")
+    classe = next(e.id for e in d.entities if e.name == "Classe")
+    data = editor.copy([student, classe])
+    new = editor.paste(data)
+    after = editor.diagram()
+    assert len(after.entities) == 6 and len(after.relationships) == 5  # Frequenta came too
+    assert {e.name for e in after.entities} >= {"Studente 2", "Classe 2"}
+    editor.undo()
+    editor.new(DiagramKind.ER)
+    ids = editor.paste(data, 500, 500)
+    pasted = editor.diagram()
+    assert len(ids) == 3 and {e.name for e in pasted.entities} == {"Studente", "Classe"}
+    xs = [e.x for e in pasted.entities] + [r.x for r in pasted.relationships]
+    assert abs(sum(xs) / len(xs) - 500) <= 10
+    editor.new(DiagramKind.UML)
+    with pytest.raises(NotFound):
+        editor.paste(data)
+    assert new
+
+
+def test_nudging_is_one_undo_step(editor):
+    editor.new(DiagramKind.ER)
+    a = editor.add_entity(0, 0)
+    for _i in range(3):
+        editor.nudge([a], 10, 0)
+    assert editor.diagram().entities[0].x == 30
+    editor.undo()
+    assert editor.diagram().entities[0].x == 0

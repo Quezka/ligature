@@ -15,3 +15,7 @@ class FileFormatError(ApplicationError):
 
 class FileAccessError(ApplicationError):
     """The file couldn't be read or written (missing, no permission, disk full…)."""
+
+
+class UpdateError(ApplicationError):
+    """Checking for, downloading or installing a new version didn't work."""

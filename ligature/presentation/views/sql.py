@@ -27,6 +27,11 @@ ISSUES = {
                                        "left out."),
     IssueKind.DUPLICATE_TABLE: N_("Two tables are called “{subject}”; one was renamed."),
     IssueKind.DUPLICATE_COLUMN: N_("“{subject}” appears twice; the second was left out."),
+    IssueKind.CHILDREN_NEED_TOTAL: N_("“{subject}”'s generalisation is partial, so it can't be "
+                                      "merged into its children: it keeps separate tables."),
+    IssueKind.CHILDREN_NEED_NO_RELATIONSHIPS: N_(
+        "“{subject}” takes part in relationships, so its generalisation can't be merged into "
+        "its children: it keeps separate tables."),
 }
 
 KEYWORDS = ("CREATE TABLE", "PRIMARY KEY", "FOREIGN KEY", "REFERENCES", "NOT NULL", "UNIQUE",

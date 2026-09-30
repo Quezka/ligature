@@ -122,6 +122,31 @@ class Relationship:
         return len(set(ids)) < len(ids)
 
 
+class Mapping(Enum):
+    """How a generalisation becomes tables (the three ways taught at school)."""
+
+    SEPARATE = "separate"  # every entity keeps its table; children borrow the parent's key
+    INTO_PARENT = "into_parent"  # one table: the parent's, with the children's attributes
+    INTO_CHILDREN = "into_children"  # one table per child, each with the parent's attributes
+
+
+@dataclass(frozen=True)
+class Generalisation:
+    """A parent entity and its specialisations (ISA). Total: every parent is one of the
+    children; exclusive: never more than one of them."""
+
+    id: str
+    parent: str
+    children: tuple[str, ...]
+    total: bool = False
+    exclusive: bool = True
+    mapping: Mapping = Mapping.SEPARATE
+
+    @property
+    def label(self) -> str:
+        return f"({'t' if self.total else 'p'},{'e' if self.exclusive else 's'})"
+
+
 # ---- UML ---------------------------------------------------------------------------------
 
 @dataclass(frozen=True)
@@ -197,6 +222,7 @@ class Diagram:
     relationships: tuple[Relationship, ...] = ()
     classes: tuple[UmlClass, ...] = ()
     links: tuple[Link, ...] = ()
+    generalisations: tuple[Generalisation, ...] = ()
 
     # ---- lookups --------------------------------------------------------------------
 
@@ -212,9 +238,12 @@ class Diagram:
     def link(self, id: str) -> Link:
         return _find(self.links, id)
 
+    def generalisation(self, id: str) -> Generalisation:
+        return _find(self.generalisations, id)
+
     def ids(self) -> set[str]:
-        return {x.id for group in (self.entities, self.relationships, self.classes, self.links)
-                for x in group}
+        return {x.id for group in (self.entities, self.relationships, self.classes, self.links,
+                                   self.generalisations) for x in group}
 
     @property
     def empty(self) -> bool:
@@ -255,8 +284,13 @@ class Diagram:
         kept_classes = {c.id for c in classes}
         links = tuple(l for l in self.links if l.id not in ids
                       and l.source in kept_classes and l.target in kept_classes)
+        generalisations = []
+        for g in self.generalisations:
+            children = tuple(c for c in g.children if c in kept)
+            if g.id not in ids and g.parent in kept and children:
+                generalisations.append(replace(g, children=children))
         return replace(self, entities=entities, relationships=tuple(relationships),
-                       classes=classes, links=links)
+                       classes=classes, links=links, generalisations=tuple(generalisations))
 
 
 def _find(items, id):
@@ -268,7 +302,7 @@ def _find(items, id):
 
 def _collection(item) -> str:
     return {Entity: "entities", Relationship: "relationships", UmlClass: "classes",
-            Link: "links"}[type(item)]
+            Link: "links", Generalisation: "generalisations"}[type(item)]
 
 
 def unique_name(base: str, taken) -> str:
@@ -284,6 +318,7 @@ def unique_name(base: str, taken) -> str:
 
 __all__ = [
     "Attribute", "CARDINALITIES", "Cardinality", "ClassKind", "DEFAULT_TYPE", "Diagram",
-    "DiagramKind", "Entity", "Link", "LinkKind", "MULTIPLICITIES", "Member", "Notation",
+    "DiagramKind", "Entity", "Generalisation", "Link", "LinkKind", "MULTIPLICITIES", "Mapping",
+    "Member", "Notation",
     "Participant", "Point", "Relationship", "UmlClass", "Visibility", "unique_name",
 ]

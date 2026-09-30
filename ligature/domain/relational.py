@@ -10,16 +10,24 @@ The usual school rules:
 - a many-to-many (or three-way) relationship becomes a table of its own, keyed by the
   keys of the entities it joins;
 - a weak entity's key also takes in the key of the entity that identifies it (through
-  a relationship where the weak entity takes part exactly once, (1,1)).
+  a relationship where the weak entity takes part exactly once, (1,1));
+- a generalisation (ISA) becomes tables in the way it asks for: separate tables where the
+  children share the parent's key, everything merged into the parent (with a column
+  saying which child a row is), or everything merged into the children.
 """
 from __future__ import annotations
 
 import re
 import unicodedata
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import Enum
 
-from .model import Diagram, Entity, Participant, Relationship
+from .model import (
+    Attribute, Cardinality, Diagram, Entity, Generalisation, Mapping, Participant, Relationship,
+)
+
+ISA = "isa:"  # id prefix of the relationships that stand for a generalisation
+SAME_NAME = "="  # participant role: the foreign key keeps the key's own column names
 
 
 class Dialect(Enum):
@@ -36,6 +44,10 @@ class IssueKind(Enum):
     TOO_FEW_PARTICIPANTS = "too_few_participants"
     DUPLICATE_TABLE = "duplicate_table"
     DUPLICATE_COLUMN = "duplicate_column"
+    # Merging a generalisation into its children needs it total, and a parent that takes
+    # part in no relationship: otherwise its entities keep separate tables.
+    CHILDREN_NEED_TOTAL = "children_need_total"
+    CHILDREN_NEED_NO_RELATIONSHIPS = "children_need_no_relationships"
 
 
 @dataclass(frozen=True)
@@ -119,7 +131,9 @@ class _Builder:
 def _fk_names(target: str, key: list[Column], role: str, taken: set[str]) -> list[str]:
     names = []
     for column in key:
-        if role:
+        if role == SAME_NAME:
+            base = column.name
+        elif role:
             base = f"{column.name}_{identifier(role)}"
         elif target.casefold() in column.name.casefold():
             base = column.name  # "id_classe" stays "id_classe"
@@ -145,6 +159,7 @@ def _identifying(e: Entity, r: Relationship) -> Participant | None:
 
 def to_tables(diagram: Diagram) -> Schema:
     issues: list[Issue] = []
+    diagram = without_generalisations(diagram, issues)
     entities = {e.id: e for e in diagram.entities}
     builders: dict[str, _Builder] = {}
     names_used: set[str] = set()
@@ -367,3 +382,112 @@ def to_sql(schema: Schema, dialect: Dialect = Dialect.STANDARD) -> str:
 def _fk_clause(fk: ForeignKey, q) -> str:
     return (f"    FOREIGN KEY ({', '.join(q(n) for n in fk.columns)}) REFERENCES "
             f"{q(fk.table)} ({', '.join(q(n) for n in fk.references)})")
+
+
+# ---- generalisations -> plain ER -----------------------------------------------------------
+
+def _depth(g: Generalisation, by_child: dict[str, Generalisation]) -> int:
+    depth, parent, seen = 0, g.parent, set()
+    while parent in by_child and parent not in seen:
+        seen.add(parent)
+        parent = by_child[parent].parent
+        depth += 1
+    return depth
+
+
+def _distinct(name: str, taken: set[str], prefix: str) -> str:
+    if name.casefold() not in taken:
+        return name
+    return f"{prefix}_{name}"
+
+
+def without_generalisations(diagram: Diagram, issues: list[Issue]) -> Diagram:
+    """Rewrite each generalisation the way it asks to become tables, deepest first, so the
+    rest of the translation only sees entities and relationships."""
+    if not diagram.generalisations:
+        return diagram
+    by_child = {c: g for g in diagram.generalisations for c in g.children}
+    pending = sorted(diagram.generalisations, key=lambda g: -_depth(g, by_child))
+    d = replace(diagram, generalisations=())
+    renamed: dict[str, str] = {}  # entity id -> the entity it was merged into
+    for g in pending:
+        parent_id = renamed.get(g.parent, g.parent)
+        children = [renamed.get(c, c) for c in g.children]
+        entities = {e.id: e for e in d.entities}
+        if parent_id not in entities or not any(c in entities for c in children):
+            continue
+        parent = entities[parent_id]
+        children = [entities[c] for c in children if c in entities and c != parent_id]
+        mapping = g.mapping
+        if mapping is Mapping.INTO_CHILDREN:
+            takes_part = any(p.entity_id == parent_id for r in d.relationships
+                             for p in r.participants) or parent_id in by_child
+            if not g.total:
+                issues.append(Issue(IssueKind.CHILDREN_NEED_TOTAL, parent.name))
+                mapping = Mapping.SEPARATE
+            elif takes_part:
+                issues.append(Issue(IssueKind.CHILDREN_NEED_NO_RELATIONSHIPS, parent.name))
+                mapping = Mapping.SEPARATE
+        if mapping is Mapping.SEPARATE:
+            d = _separate(d, g, parent, children)
+        elif mapping is Mapping.INTO_PARENT:
+            d = _into_parent(d, g, parent, children)
+            for c in children:
+                renamed[c.id] = parent.id
+            renamed.update({k: parent.id for k, v in renamed.items() if v in {c.id for c in children}})
+        else:
+            d = _into_children(d, parent, children)
+    return d
+
+
+def _separate(d: Diagram, g: Generalisation, parent: Entity, children: list[Entity]) -> Diagram:
+    """Each child keeps its table, identified by the parent's key (a foreign key too)."""
+    for child in children:
+        d = d.put(replace(child, weak=True,
+                          attributes=tuple(replace(a, key=False) for a in child.attributes)))
+        d = d.put(Relationship(
+            f"{ISA}{g.id}:{child.id}", f"{child.name} ISA {parent.name}", child.pos,
+            (Participant(child.id, Cardinality(1, False)),
+             Participant(parent.id, Cardinality(0, False), SAME_NAME))))
+    return d
+
+
+def _into_parent(d: Diagram, g: Generalisation, parent: Entity, children: list[Entity]) -> Diagram:
+    """One table: the parent's, with every child's attributes (they may be empty) and what
+    says which child a row is."""
+    attributes = list(parent.attributes)
+    taken = {a.name.casefold() for a in attributes}
+    for child in children:
+        for a in child.attributes:
+            name = _distinct(a.name, taken, child.name.lower())
+            taken.add(name.casefold())
+            attributes.append(Attribute(name, a.type, key=False, optional=True))
+    if g.exclusive:
+        name = _distinct("tipo", taken, parent.name.lower())
+        attributes.append(Attribute(name, "VARCHAR(30)", optional=not g.total))
+    else:
+        for child in children:
+            name = _distinct(f"is_{child.name.lower()}", taken, parent.name.lower())
+            taken.add(name.casefold())
+            attributes.append(Attribute(name, "BOOLEAN"))
+    d = d.put(replace(parent, attributes=tuple(attributes)))
+    ids = {c.id for c in children}
+    relationships = []
+    for r in d.relationships:
+        participants = tuple(
+            replace(p, entity_id=parent.id, cardinality=Cardinality(0, p.cardinality.many))
+            if p.entity_id in ids else p for p in r.participants)
+        relationships.append(replace(r, participants=participants))
+    d = replace(d, relationships=tuple(relationships))
+    return replace(d, entities=tuple(e for e in d.entities if e.id not in ids))
+
+
+def _into_children(d: Diagram, parent: Entity, children: list[Entity]) -> Diagram:
+    """One table per child, each with the parent's attributes (and key) first."""
+    for child in children:
+        taken = {a.name.casefold() for a in parent.attributes}
+        own = tuple(replace(a, name=_distinct(a.name, taken, child.name.lower()), key=False)
+                    if a.name.casefold() in taken else replace(a, key=False)
+                    for a in child.attributes)
+        d = d.put(replace(child, attributes=tuple(parent.attributes) + own))
+    return replace(d, entities=tuple(e for e in d.entities if e.id != parent.id))

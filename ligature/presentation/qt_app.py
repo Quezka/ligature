@@ -26,7 +26,6 @@ def create_application(argv: list[str]) -> QApplication:
 
 def run(services: Services, argv: list[str], file: Path | None = None,
         demo: bool = False) -> int:
-    from ..application.types import DiagramKind
     from .main_window import MainWindow
 
     app = create_application(argv)
@@ -35,5 +34,5 @@ def run(services: Services, argv: list[str], file: Path | None = None,
     if file is not None:
         window.open_file(str(file))
     elif demo:
-        window.open_sample(DiagramKind.ER)
+        window.open_sample("school")
     return app.exec()

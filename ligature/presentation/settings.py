@@ -1,19 +1,18 @@
 """Settings: appearance and language."""
 from __future__ import annotations
 
-from PySide6.QtCore import QCoreApplication, QProcess
-from PySide6.QtWidgets import (
-    QApplication, QComboBox, QDialog, QHBoxLayout, QPushButton, QVBoxLayout,
-)
+from PySide6.QtWidgets import QCheckBox, QComboBox, QDialog, QHBoxLayout, QPushButton, QVBoxLayout
 
 from . import i18n, theme
+from .background import restart_app
 from .i18n import _
 from .views.common import Card, Segmented, caption, label
 
 
 class SettingsDialog(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, services, updater=None, parent=None):
         super().__init__(parent)
+        self.services = services
         self.setWindowTitle(_("Settings"))
         self.setMinimumWidth(460)
         manager = theme.manager()
@@ -37,6 +36,19 @@ class SettingsDialog(QDialog):
         language.add(self.language)
         language.add(self.restart)
 
+        updates = Card(_("Updates"))
+        auto = QCheckBox(_("Check for new versions once a day"))
+        auto.setChecked(services.updates.auto_check())
+        auto.toggled.connect(services.updates.set_auto_check)
+        updates.add(auto)
+        check = QPushButton(_("Check now"))
+        check.setEnabled(updater is not None)
+        if updater is not None:
+            check.clicked.connect(lambda: updater.check_now())
+        updates.add(check)
+        updates.add(label(_("You have version {version}.").format(
+            version=services.updates.current_version), "hint"))
+
         close = QPushButton(_("Close"))
         close.clicked.connect(self.accept)
         row = QHBoxLayout()
@@ -47,6 +59,7 @@ class SettingsDialog(QDialog):
         layout.setSpacing(14)
         layout.addWidget(appearance)
         layout.addWidget(language)
+        layout.addWidget(updates)
         layout.addLayout(row)
 
     def _language_changed(self):
@@ -54,9 +67,5 @@ class SettingsDialog(QDialog):
         self.restart.show()
 
     def _restart(self):
-        window = self.parent().window() if self.parent() else None
-        if window is not None and not window.close():
-            return
-        QProcess.startDetached(QCoreApplication.applicationFilePath(),
-                               QCoreApplication.arguments()[1:])
-        QApplication.quit()
+        self.accept()
+        restart_app()

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QFont, QFontMetrics
 from PySide6.QtWidgets import (
     QButtonGroup, QFrame, QHBoxLayout, QLabel, QPushButton, QSizePolicy, QToolButton, QVBoxLayout,
     QWidget,
@@ -76,6 +77,10 @@ class Segmented(QFrame):
         for i, (value, text) in enumerate(options):
             b = QPushButton(text, objectName="segment", checkable=True)
             b.setCursor(Qt.PointingHandCursor)
+            # Room for the text in bold (as it is when chosen), so choosing doesn't clip it.
+            bold = QFont(b.font())
+            bold.setBold(True)
+            b.setMinimumWidth(QFontMetrics(bold).horizontalAdvance(text) + 30)
             self.group.addButton(b, i)
             self.values.append(value)
             row.addWidget(b)

@@ -204,6 +204,11 @@ MESSAGES = {
     "Keyboard shortcuts": "Сочетания клавиш",
     "New ER / UML diagram": "Новая диаграмма ER / UML",
     "Open, save, save as": "Открыть, сохранить, сохранить как",
+    "Tools: select, entity, relationship, generalisation, class, link":
+        "Инструменты: выбор, сущность, связь, обобщение, класс, связь UML",
+    "Copy, cut, paste (also into another diagram)": "Копировать, вырезать, вставить (и в другую диаграмму)",
+    "Arrow keys": "Стрелки",
+    "Move the selection (with Shift, further)": "Сдвинуть выбранное (с Shift — дальше)",
     "Tools: select, entity, relationship, class, link":
         "Инструменты: выбор, сущность, связь, класс, связь UML",
     "Double-click": "Двойной щелчок",
@@ -237,4 +242,77 @@ MESSAGES = {
     "not a PNG": "это не PNG",
     "not an SVG": "это не SVG",
     "a picture is needed to save as PNG or SVG": "для PNG или SVG нужна картинка",
+
+    # ---- generalisations, clipboard, warnings
+    "Generalisation": "Обобщение",
+    "Specialisations": "Специализации",
+    "Specialisations of {parent}": "Специализации сущности {parent}",
+    "No longer a specialisation": "Больше не специализация",
+    "Total": "Полное",
+    "Partial": "Частичное",
+    "Exclusive": "Исключающее",
+    "Overlapping": "Перекрывающееся",
+    "As tables": "В таблицах",
+    "A table for each (children use the parent's key)":
+        "Таблица для каждой (потомки берут ключ родителя)",
+    "One table: children merged into the parent": "Одна таблица: потомки слиты в родителя",
+    "A table per child: parent merged into them": "Таблица на потомка: родитель слит в них",
+    "Total (t): every parent is also one of the children; partial (p): not necessarily. Exclusive (e): at most one child; overlapping (s): maybe several. To add a child, pick Generalisation in the toolbar and click the child, then the parent.":
+        "Полное (t): каждый родитель — также один из потомков; частичное (p): не обязательно. "
+        "Исключающее (e): не больше одного потомка; перекрывающееся (s): возможно несколько. "
+        "Чтобы добавить потомка, выберите «Обобщение» на панели и щёлкните потомка, затем "
+        "родителя.",
+    "Merging into the children needs a total generalisation whose parent takes part in no relationship.":
+        "Слияние в потомков требует полного обобщения, родитель которого не участвует ни в одной "
+        "связи.",
+    "Click the specialised entity (the child).": "Щёлкните специализированную сущность (потомка).",
+    "Now click the parent entity. Esc cancels.": "Теперь щёлкните родительскую сущность. Esc — отмена.",
+    "No key: mark its identifier with the key icon.":
+        "Нет ключа: отметьте идентификатор значком ключа.",
+    "University, with a generalisation (ER)": "Университет, с обобщением (ER)",
+    "Cut": "Вырезать",
+    "Paste": "Вставить",
+    "An entity can't be a specialisation of itself.":
+        "Сущность не может быть специализацией самой себя.",
+    "That would make a circle of specialisations.": "Получился бы круг специализаций.",
+    "Those items belong in a different kind of diagram.":
+        "Эти элементы относятся к диаграмме другого вида.",
+    "“{subject}”'s generalisation is partial, so it can't be merged into its children: it keeps separate tables.":
+        "Обобщение «{subject}» частичное, поэтому его нельзя слить в потомков: таблицы остаются "
+        "отдельными.",
+    "“{subject}” takes part in relationships, so its generalisation can't be merged into its children: it keeps separate tables.":
+        "«{subject}» участвует в связях, поэтому его обобщение нельзя слить в потомков: таблицы "
+        "остаются отдельными.",
+
+    # ---- updates
+    "Can't reach GitHub to check for updates. Check your internet connection.": 'GitHub недоступен для проверки обновлений. Проверьте подключение к интернету.',
+    'Check for updates…': 'Проверить обновления…',
+    'Check now': 'Проверить сейчас',
+    "Couldn't check for updates": 'Не удалось проверить обновления',
+    "Couldn't start the installer.": 'Не удалось запустить установщик.',
+    'Downloading…': 'Загрузка…',
+    'Downloading… {done} of {total} MB': 'Загрузка… {done} из {total} МБ',
+    'GitHub is limiting update checks right now: try again in an hour.': 'GitHub сейчас ограничивает проверки обновлений: попробуйте через час.',
+    "GitHub sent an answer Ligature doesn't understand.": 'GitHub прислал ответ, который Ligature не понимает.',
+    'Installing was cancelled.': 'Установка отменена.',
+    'Installing… your system may ask for your password.': 'Установка… система может спросить пароль.',
+    'Later': 'Позже',
+    'Ligature {version} is available': 'Доступна версия Ligature {version}',
+    'No release notes.': 'Описания выпуска нет.',
+    'No updates': 'Обновлений нет',
+    'Open download page': 'Открыть страницу загрузки',
+    'Skip this version': 'Пропустить эту версию',
+    'Something went wrong: {error}': 'Что-то пошло не так: {error}',
+    "The download didn't finish. Check your internet connection and try again.": 'Загрузка не завершилась. Проверьте подключение к интернету и попробуйте снова.',
+    "The download was damaged (its checksum doesn't match), so it wasn't installed. Try again.": 'Загруженный файл повреждён (контрольная сумма не совпадает), поэтому он не установлен. Попробуйте снова.',
+    "There's no download for this computer in that release.": 'В этом выпуске нет файла для этого компьютера.',
+    "This copy of Ligature can't update itself (for example when it runs from source). Download the new version from GitHub.": 'Эта копия Ligature не может обновиться сама (например, при запуске из исходников). Скачайте новую версию с GitHub.',
+    "This copy of Ligature can't update itself.": 'Эта копия Ligature не может обновиться сама.',
+    'Update available': 'Доступно обновление',
+    'Update now': 'Обновить сейчас',
+    'Updates': 'Обновления',
+    'You have the latest version of Ligature ({version}).': 'У вас последняя версия Ligature ({version}).',
+    "You have {version}. Here's what's new:": 'У вас версия {version}. Что нового:',
+    'Check for new versions once a day': 'Проверять новые версии раз в день',
+    'You have version {version}.': 'У вас версия {version}.',
 }
