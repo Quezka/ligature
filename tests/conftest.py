@@ -44,3 +44,17 @@ def installer():
 def services(editor, releases, installer, clock):
     from ligature.application.services import Services
     return Services(editor, UpdateService(releases, installer, MemorySettings(), "0.2.0", clock))
+
+
+@pytest.fixture(scope="session", autouse=True)
+def empty_clipboard():
+    """Qt's headless test platform crashes at exit when the clipboard still holds data a
+    test copied (real desktops don't), so empty it before the tests end."""
+    yield
+    try:
+        from PySide6.QtWidgets import QApplication
+    except ImportError:
+        return
+    app = QApplication.instance()
+    if app is not None:
+        app.clipboard().clear()
