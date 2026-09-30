@@ -12,10 +12,10 @@ from .application.types import ClassKind, DiagramKind, LinkKind
 def school_er(editor: Editor):
     """Students, classes, subjects and teachers: the classic register exercise."""
     editor.new(DiagramKind.ER, "Registro scolastico")
-    classe = editor.add_entity(120, 120, "Classe")
-    studente = editor.add_entity(520, 120, "Studente")
-    materia = editor.add_entity(520, 460, "Materia")
-    docente = editor.add_entity(120, 460, "Docente")
+    classe = editor.add_entity(100, 140, "Classe")
+    studente = editor.add_entity(760, 140, "Studente")
+    materia = editor.add_entity(760, 540, "Materia")
+    docente = editor.add_entity(100, 540, "Docente")
     editor.update_entity(classe, EntityInput("Classe", (
         A("id_classe", "INT", key=True), A("anno", "INT"), A("sezione", "CHAR(1)"))))
     editor.update_entity(studente, EntityInput("Studente", (
