@@ -3,7 +3,7 @@
 Release metadata below is the single source for packaging (the .deb, AppStream
 metainfo checks, Windows file properties) and the About dialog.
 """
-__version__ = "0.2.1"
+__version__ = "0.2.2"
 
 APP_NAME = "Ligature"
 APP_ID = "io.github.quezka.Ligature"  # reverse-DNS id used by desktop files and AppStream

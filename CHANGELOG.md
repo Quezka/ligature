@@ -4,6 +4,10 @@ All notable changes to Ligature. Versions follow [Semantic Versioning](https://s
 patch for fixes, minor for new features, major for breaking changes (while below 1.0,
 breaking changes bump the minor version).
 
+## [0.2.2] - 2026-10-01
+
+- Cardinality labels such as (1,N) no longer overlap the entities: they sit beside their line, clear of the entity, the relationship and the line.
+
 ## [0.2.1] - 2026-09-30
 
 ### Fixed
