@@ -543,6 +543,43 @@ class Edge(QGraphicsItem):
         painter.setPen(QColor(color or self.style.text))
         painter.drawText(rect, Qt.AlignCenter, text)
 
+    def _label_spot(self, text: str, font=SMALL_FONT) -> QPointF:
+        """Where to write a cardinality beside the entity end: next to the line, as near
+        the entity as it gets without touching the entity, the relationship or the line.
+        When it can't fit anywhere (a very short line), the least crowded spot wins."""
+        u = _unit(self.b, self.a)  # from the entity towards the relationship
+        n = _normal(u)
+        w, h = _width(font, text) + 6, _height(font)
+        # How far the label's centre must sit from the line for its box to clear it.
+        away = abs(n.x()) * w / 2 + abs(n.y()) * h / 2 + 3
+        thin = QPolygonF([self.a + QPointF(n.x(), n.y()), self.b + QPointF(n.x(), n.y()),
+                          self.b - QPointF(n.x(), n.y()), self.a - QPointF(n.x(), n.y())])
+        avoid = [self.entity.scene_outline(), self.relationship.scene_outline(), thin]
+        reach = math.hypot(self.a.x() - self.b.x(), self.a.y() - self.b.y())
+        above = 1 if n.y() <= 0 else -1
+        best, fewest = None, 99
+        for side in (above, -above):
+            d = 12.0
+            while d <= max(reach, 24.0):
+                at = self.b + QPointF(u.x() * d + n.x() * away * side,
+                                      u.y() * d + n.y() * away * side)
+                box = QPolygonF(QRectF(at.x() - w / 2 - 1, at.y() - h / 2 - 1, w + 2, h + 2))
+                hits = sum(not box.intersected(shape).isEmpty() for shape in avoid)
+                if hits == 0:
+                    return at
+                if hits < fewest:
+                    best, fewest = at, hits
+                d += 4
+        # No room along the line: take the nearest free spot around where it meets the entity.
+        for radius in range(24, 121, 8):
+            for step in range(16):
+                angle = 2 * math.pi * step / 16 + math.atan2(u.y(), u.x())
+                at = self.b + QPointF(math.cos(angle) * radius, math.sin(angle) * radius)
+                box = QPolygonF(QRectF(at.x() - w / 2 - 1, at.y() - h / 2 - 1, w + 2, h + 2))
+                if all(box.intersected(shape).isEmpty() for shape in avoid[:2]):
+                    return at
+        return best
+
 
 def _ends(a: Node, b: Node, offset: float = 0.0) -> tuple[QPointF, QPointF]:
     """Where a straight line between two nodes leaves each of them, optionally moved
@@ -576,11 +613,7 @@ class ChenEdge(Edge):
         painter.setRenderHint(QPainter.Antialiasing)
         painter.setPen(pen(self.style.line))
         painter.drawPath(self.path)
-        u = _unit(self.b, self.a)
-        n = _normal(u)
-        side = 12 if n.y() <= 0 else -12
-        at = self.b + QPointF(u.x() * 24 + n.x() * side, u.y() * 24 + n.y() * side)
-        self._text(painter, at, self.label, background=False)
+        self._text(painter, self._label_spot(self.label), self.label, background=False)
 
 
 class CrowEdge(Edge):
@@ -607,9 +640,8 @@ class CrowEdge(Edge):
         painter.drawPath(self.path)
         if self.many is None:
             if self.label:
-                u, n = _unit(self.b, self.a), _normal(_unit(self.b, self.a))
-                at = self.b + QPointF(u.x() * 24 + n.x() * 12, u.y() * 24 + n.y() * 12)
-                self._text(painter, at, self.label, background=False)
+                self._text(painter, self._label_spot(self.label), self.label,
+                           background=False)
             return
         tip = self.b
         u = _unit(tip, self.a)  # from the entity towards the relationship

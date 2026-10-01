@@ -173,3 +173,28 @@ def test_generalisation_tool_and_panel(window):
     g = window.editor.diagram().generalisations[0]
     assert g.total and g.mapping is Mapping.INTO_PARENT and g.label == "(t,e)"
     assert window.diagram.scene.nodes[parent].warning  # no key yet
+
+
+def test_cardinality_labels_stay_off_the_entities(app, editor):
+    from PySide6.QtCore import QRectF
+    from PySide6.QtGui import QPolygonF
+    from ligature.application.inputs import ParticipantInput as P, RelationshipInput
+    from ligature.presentation import canvas
+
+    editor.new(DiagramKind.ER, "t")
+    a, b = editor.add_entity(100, 100, "Studente"), editor.add_entity(330, 130, "Classe")
+    d, f = editor.add_entity(100, 330, "Docente"), editor.add_entity(230, 450, "Materia")
+    r1, r2 = editor.add_relationship([a, b], "Frequenta"), editor.add_relationship([d, f], "X")
+    editor.update_relationship(r1, RelationshipInput("Frequenta", (
+        P(a, "(0,N)", "iscritto"), P(b, "(1,N)", "frequentata"))))
+    editor.update_relationship(r2, RelationshipInput("X", (
+        P(d, "(1,N)", "titolare"), P(f, "(0,N)"))))
+    scene = canvas.DiagramScene(canvas.EXPORT_STYLE, grid=False)
+    scene.load(editor.diagram(), keep_selection=False)
+    edges = [e for e in scene.items() if isinstance(e, canvas.ChenEdge)]
+    assert len(edges) == 4
+    for edge in edges:
+        spot = edge._label_spot(edge.label)
+        w, h = canvas._width(canvas.SMALL_FONT, edge.label) + 6, canvas._height(canvas.SMALL_FONT)
+        box = QPolygonF(QRectF(spot.x() - w / 2, spot.y() - h / 2, w, h))
+        assert box.intersected(edge.entity.scene_outline()).isEmpty(), edge.label
