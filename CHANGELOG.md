@@ -4,6 +4,10 @@ All notable changes to Ligature. Versions follow [Semantic Versioning](https://s
 patch for fixes, minor for new features, major for breaking changes (while below 1.0,
 breaking changes bump the minor version).
 
+## [0.3.1] - 2026-10-02
+
+- Fixed: opening the app put a second icon on the dock instead of using the pinned one (the screen-size check forgot the app's desktop name).
+
 ## [0.3.0] - 2026-10-02
 - Interface size in Settings (Automatic, 80%–130%). Automatic makes everything a little smaller on small screens such as 1366x768. Applies after a restart.
 - The window never opens bigger than the screen, and Settings scrolls when it is taller than the screen.
