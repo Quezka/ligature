@@ -15,6 +15,7 @@ from ..application.services import Services
 from ..application.types import DiagramKind, FileFormat
 from . import theme
 from .bridge import ChangeRelay
+from .fit import clamp_window
 from .export import pdf_bytes, png_bytes, svg_bytes
 from .i18n import N_, _
 from .icons import APP_ICON
@@ -86,8 +87,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.services = services
         self.editor = services.editor
-        self.resize(1320, 840)
-        self.setMinimumSize(1000, 640)
+        clamp_window(self, 1320, 840, 1000, 640)
         self.setAcceptDrops(True)
 
         self.relay = ChangeRelay(self.editor, self)

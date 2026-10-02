@@ -146,7 +146,9 @@ def test_copy_paste_and_arrow_keys(window):
     page = window.diagram
     person = next(e for e in window.editor.diagram().entities if e.name == "Persona")
     page.scene.select_only([person.id])
+    window.activateWindow()  # the scene only takes keys when its window is the active one
     page.view.setFocus()
+    pump()
     QTest.keyClick(page.view, Qt.Key_Right)
     assert window.editor.diagram().find(person.id).x == person.x + 10
     assert page.copy_selection()
