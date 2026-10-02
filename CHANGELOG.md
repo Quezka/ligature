@@ -4,6 +4,10 @@ All notable changes to Ligature. Versions follow [Semantic Versioning](https://s
 patch for fixes, minor for new features, major for breaking changes (while below 1.0,
 breaking changes bump the minor version).
 
+## [0.4.0] - 2026-10-02
+
+- Pressing Enter in a one-line box now finishes with it: the cursor stops blinking and the box lets go of the focus.
+
 ## [0.3.1] - 2026-10-02
 
 - Fixed: opening the app put a second icon on the dock instead of using the pinned one (the screen-size check forgot the app's desktop name).
