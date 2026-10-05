@@ -854,6 +854,27 @@ class DiagramScene(QGraphicsScene):
                 best_y = p.y()
         x = pos.x() if best_x is None else best_x
         y = pos.y() if best_y is None else best_y
+        if best_x is None or best_y is None:  # still free on one axis: try the 45° lines
+            found = None
+            for other in self.nodes.values():
+                if other is node:
+                    continue
+                p = other.pos()
+                for sign in (1, -1):
+                    if best_x is None and best_y is None:
+                        gx = snap(pos.x())
+                        cand = (gx, p.y() + sign * (gx - p.x()))
+                    elif best_x is not None:
+                        cand = (x, p.y() + sign * (x - p.x()))
+                    else:
+                        cand = (p.x() + sign * (y - p.y()), y)
+                    miss = abs(cand[0] - pos.x()) + abs(cand[1] - pos.y())
+                    if miss <= reach and (found is None or miss < found[0]):
+                        found = (miss, cand)
+            if found is not None:
+                x, y = found[1]
+                best_x = x if best_x is None else best_x
+                best_y = y if best_y is None else best_y
         self._aligned[node.id] = (best_x, best_y)
         self._clear_guides()
         for other in self.nodes.values():
@@ -864,6 +885,11 @@ class DiagramScene(QGraphicsScene):
                 self._guide(QLineF(best_x, min(y, p.y()) - 40, best_x, max(y, p.y()) + 40))
             if best_y is not None and p.y() == best_y:
                 self._guide(QLineF(min(x, p.x()) - 70, best_y, max(x, p.x()) + 70, best_y))
+            dx, dy = x - p.x(), y - p.y()
+            if dx and abs(dx) == abs(dy):  # on a 45° line through the other box
+                k = 60 if dx > 0 else -60
+                j = k if dy > 0 else -k
+                self._guide(QLineF(p.x() - k, p.y() - j, x + k, y + j))
         return QPointF(x, y)
 
     def _guide(self, line: QLineF):

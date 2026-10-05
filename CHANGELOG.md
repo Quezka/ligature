@@ -4,6 +4,10 @@ All notable changes to Ligature. Versions follow [Semantic Versioning](https://s
 patch for fixes, minor for new features, major for breaking changes (while below 1.0,
 breaking changes bump the minor version).
 
+## [0.7.0] - 2026-10-05
+
+- Alignment guides now also snap to the 45° diagonals through other boxes.
+
 ## [0.6.0] - 2026-10-05
 
 - Alignment guides: dragging a box snaps its centre to the horizontal or vertical centre line of other boxes, with a dashed line showing the match.

@@ -133,13 +133,22 @@ def test_mouse_places_connects_and_drags(window):
     assert window.editor.diagram().entities[0].y == 100
     # Dragging near another box's centre line snaps to it and shows guides.
     QTest.mousePress(view.viewport(), Qt.LeftButton, pos=at(400, 100))
-    QTest.mouseMove(view.viewport(), at(404, 250))
+    QTest.mouseMove(view.viewport(), at(404, 330))
     assert window.diagram.scene._guides == []  # nothing near
     QTest.mouseMove(view.viewport(), at(404, 104))
     assert len(window.diagram.scene._guides) == 2  # level with the other entity and the diamond
     QTest.mouseRelease(view.viewport(), Qt.LeftButton, pos=at(404, 104))
     assert window.diagram.scene._guides == []
     assert window.editor.diagram().entities[1].y == 100
+    window.editor.undo()
+    # ...and to a 45° line through another box (the first entity is at 100,100).
+    QTest.mousePress(view.viewport(), Qt.LeftButton, pos=at(400, 100))
+    QTest.mouseMove(view.viewport(), at(300, 250))
+    QTest.mouseMove(view.viewport(), at(303, 303))
+    assert len(window.diagram.scene._guides) >= 1
+    QTest.mouseRelease(view.viewport(), Qt.LeftButton, pos=at(303, 303))
+    moved = window.editor.diagram().entities[1]
+    assert (moved.x, moved.y) == (300, 300)
     window.editor.undo()
     # Double-click on empty space adds an entity.
     QTest.mouseDClick(view.viewport(), Qt.LeftButton, pos=at(250, 350))
