@@ -159,6 +159,10 @@ class Node(QGraphicsItem):
         return path
 
     def itemChange(self, change, value):
+        if change == QGraphicsItem.ItemPositionChange:
+            scene = self.scene()
+            if scene is not None and scene.mouseGrabberItem() is self and hasattr(scene, "align"):
+                return scene.align(self, value)
         if change == QGraphicsItem.ItemPositionHasChanged:
             for edge in self.edges:
                 edge.refresh()
@@ -825,6 +829,55 @@ class DiagramScene(QGraphicsScene):
         self._first: Node | None = None
         self._rubber = None
         self._press_positions: dict[str, QPointF] = {}
+        self._aligned: dict[str, tuple[float | None, float | None]] = {}
+        self._guides: list = []
+        self.zoom_hint = 1.0  # set by the view, so the snap distance is the same on screen
+
+    # ---- alignment guides -------------------------------------------------------------
+
+    def align(self, node: Node, pos: QPointF) -> QPointF:
+        """While one node is dragged: snap its centre to the centre lines of the others, and
+        show the line. (With several selected they move together, untouched.)"""
+        if not self.grid or len(self.selectedItems()) > 1:
+            return pos
+        reach = 7 / max(self.zoom_hint, 0.01)
+        best_x = best_y = None
+        for other in self.nodes.values():
+            if other is node:
+                continue
+            p = other.pos()
+            if abs(p.x() - pos.x()) <= reach and (
+                    best_x is None or abs(p.x() - pos.x()) < abs(best_x - pos.x())):
+                best_x = p.x()
+            if abs(p.y() - pos.y()) <= reach and (
+                    best_y is None or abs(p.y() - pos.y()) < abs(best_y - pos.y())):
+                best_y = p.y()
+        x = pos.x() if best_x is None else best_x
+        y = pos.y() if best_y is None else best_y
+        self._aligned[node.id] = (best_x, best_y)
+        self._clear_guides()
+        for other in self.nodes.values():
+            if other is node:
+                continue
+            p = other.pos()
+            if best_x is not None and p.x() == best_x:
+                self._guide(QLineF(best_x, min(y, p.y()) - 40, best_x, max(y, p.y()) + 40))
+            if best_y is not None and p.y() == best_y:
+                self._guide(QLineF(min(x, p.x()) - 70, best_y, max(x, p.x()) + 70, best_y))
+        return QPointF(x, y)
+
+    def _guide(self, line: QLineF):
+        item = self.addLine(line, pen(self.style.accent, 1.2, dashed=True))
+        item.setZValue(1)
+        self._guides.append(item)
+
+    def _clear_guides(self):
+        for item in self._guides:
+            try:
+                self.removeItem(item)
+            except RuntimeError:
+                pass
+        self._guides = []
 
     # ---- building ---------------------------------------------------------------------
 
@@ -833,6 +886,7 @@ class DiagramScene(QGraphicsScene):
         self.blockSignals(True)
         self._cancel_pick()
         self.clear()
+        self._guides = []
         self.nodes.clear()
         self.links.clear()
         self.record = record
@@ -1003,15 +1057,20 @@ class DiagramScene(QGraphicsScene):
 
     def mouseReleaseEvent(self, event):
         super().mouseReleaseEvent(event)
+        self._clear_guides()
         if self.tool is not Tool.SELECT or not self._press_positions:
+            self._aligned = {}
             return
         moved = {}
         for id, node in self.nodes.items():
             before = self._press_positions.get(id)
             if before is not None and node.pos() != before:
-                x, y = snap(node.pos().x()), snap(node.pos().y())
+                ax, ay = self._aligned.get(id, (None, None))
+                x = ax if ax is not None else snap(node.pos().x())
+                y = ay if ay is not None else snap(node.pos().y())
                 moved[id] = (x, y)
         self._press_positions = {}
+        self._aligned = {}
         if moved:
             self.moved.emit(moved)
 
@@ -1095,6 +1154,11 @@ class DiagramView(QGraphicsView):
         self._panning = None
         self._space = False
         self.setSceneRect(QRectF(-5000, -5000, 10000, 10000))
+
+    def drawForeground(self, painter, rect):
+        scene = self.scene()
+        if scene is not None:
+            scene.zoom_hint = self.zoom
 
     @property
     def zoom(self) -> float:
