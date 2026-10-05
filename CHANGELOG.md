@@ -4,6 +4,10 @@ All notable changes to Ligature. Versions follow [Semantic Versioning](https://s
 patch for fixes, minor for new features, major for breaking changes (while below 1.0,
 breaking changes bump the minor version).
 
+## [0.5.0] - 2026-10-05
+
+- Italian translation of the whole interface (Language in Settings; Italian systems start in Italian).
+
 ## [0.4.0] - 2026-10-02
 
 - Pressing Enter in a one-line box now finishes with it: the cursor stops blinking and the box lets go of the focus.
