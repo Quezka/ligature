@@ -92,6 +92,8 @@ MESSAGES = {
     "Redo (Ctrl+Shift+Z)": "Повторить (Ctrl+Shift+Z)",
     "Zoom out (Ctrl+-)": "Уменьшить (Ctrl+-)",
     "Zoom in (Ctrl+=, or Ctrl+scroll)": "Увеличить (Ctrl+= или Ctrl+колесо)",
+    "Show or hide the properties panel": "Показать или скрыть панель свойств",
+    "Close the properties panel": "Закрыть панель свойств",
     "Fit the diagram (Ctrl+0)": "Вписать диаграмму (Ctrl+0)",
     "Fit the diagram": "Вписать диаграмму",
     "Add an entity here": "Добавить сущность здесь",

@@ -179,6 +179,7 @@ class AttributeList(QWidget):
         name.textEdited.connect(lambda _t: self._emit(self.changed))
         name.editingFinished.connect(lambda: self._emit(self.finished))
         name.returnPressed.connect(lambda r=row: self._next(r))
+        kind.lineEdit().returnPressed.connect(lambda r=row: self._next(r))
         kind.currentTextChanged.connect(lambda _t: self._emit(self.changed))
         key.toggled.connect(lambda on, r=row: (r["optional"].setEnabled(not on),
                                                self._emit(self.changed),
@@ -188,18 +189,22 @@ class AttributeList(QWidget):
         remove.clicked.connect(lambda _c=False, r=row: self._remove(r))
         self.empty.hide()
         if focus:
-            name.setFocus()
+            # The layout shows a new widget a moment later; only then can it take the focus.
+            QTimer.singleShot(0, name, name.setFocus)
         if emit:
             self._emit(self.changed)
 
     def _next(self, row):
-        """Enter in the last name adds another row: quick to type a list of attributes."""
-        if row is self.rows[-1] and row["name"].text().strip():
+        """Enter in a name (or its type) goes straight to the next attribute's name, adding
+        one after the last: quick to type a list of attributes."""
+        if row not in self.rows:
+            return
+        index = self.rows.index(row)
+        if index + 1 < len(self.rows):
+            QTimer.singleShot(0, self.rows[index + 1]["name"],
+                              self.rows[index + 1]["name"].setFocus)
+        elif row["name"].text().strip():
             self.add_row(focus=True)
-        else:
-            index = self.rows.index(row)
-            if index + 1 < len(self.rows):
-                self.rows[index + 1]["name"].setFocus()
 
     def _remove(self, row):
         self.rows.remove(row)

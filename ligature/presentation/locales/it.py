@@ -92,6 +92,8 @@ MESSAGES = {
     "Redo (Ctrl+Shift+Z)": "Ripeti (Ctrl+Shift+Z)",
     "Zoom out (Ctrl+-)": "Riduci (Ctrl+-)",
     "Zoom in (Ctrl+=, or Ctrl+scroll)": "Ingrandisci (Ctrl+= o Ctrl+rotellina)",
+    "Show or hide the properties panel": "Mostra o nascondi il pannello delle proprietà",
+    "Close the properties panel": "Chiudi il pannello delle proprietà",
     "Fit the diagram (Ctrl+0)": "Adatta il diagramma (Ctrl+0)",
     "Fit the diagram": "Adatta il diagramma",
     "Add an entity here": "Aggiungi un’entità qui",

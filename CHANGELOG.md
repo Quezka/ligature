@@ -4,6 +4,12 @@ All notable changes to Ligature. Versions follow [Semantic Versioning](https://s
 patch for fixes, minor for new features, major for breaking changes (while below 1.0,
 breaking changes bump the minor version).
 
+## [0.8.0] - 2026-10-13
+
+- Alignment guides also snap a box's edges (left/right, top/bottom) to the edges and centres of the other boxes.
+- The properties panel can be closed (x) and reopened (button in the toolbar, or by double-clicking an item).
+- Enter in an attribute's name or type goes straight to the next attribute's name, adding one after the last (the new field could miss the focus before).
+
 ## [0.7.0] - 2026-10-05
 
 - Alignment guides now also snap to the 45° diagonals through other boxes.

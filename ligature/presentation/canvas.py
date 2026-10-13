@@ -836,22 +836,47 @@ class DiagramScene(QGraphicsScene):
     # ---- alignment guides -------------------------------------------------------------
 
     def align(self, node: Node, pos: QPointF) -> QPointF:
-        """While one node is dragged: snap its centre to the centre lines of the others, and
-        show the line. (With several selected they move together, untouched.)"""
+        """While one node is dragged: snap its centre or edges to the centre lines and edges of
+        the others, and show the line. (With several selected they move together, untouched.)"""
         if not self.grid or len(self.selectedItems()) > 1:
             return pos
         reach = 7 / max(self.zoom_hint, 0.01)
         best_x = best_y = None
+        lines_x: list[tuple[Node, float]] = []  # (the other node, the shared line)
+        lines_y: list[tuple[Node, float]] = []
+        own = node.body
+        # Centres line up with centres, and so do the edges (left/right, top/bottom).
+        own_x = (0.0, own.left(), own.right())
+        own_y = (0.0, own.top(), own.bottom())
+        miss_x = miss_y = reach + 1
         for other in self.nodes.values():
             if other is node:
                 continue
-            p = other.pos()
-            if abs(p.x() - pos.x()) <= reach and (
-                    best_x is None or abs(p.x() - pos.x()) < abs(best_x - pos.x())):
-                best_x = p.x()
-            if abs(p.y() - pos.y()) <= reach and (
-                    best_y is None or abs(p.y() - pos.y()) < abs(best_y - pos.y())):
-                best_y = p.y()
+            p, b = other.pos(), other.body
+            for mine in own_x:
+                for theirs in (0.0, b.left(), b.right()):
+                    delta = p.x() + theirs - (pos.x() + mine)
+                    if abs(delta) <= reach and abs(delta) < miss_x - 1e-6:
+                        miss_x, best_x = abs(delta), pos.x() + delta
+            for mine in own_y:
+                for theirs in (0.0, b.top(), b.bottom()):
+                    delta = p.y() + theirs - (pos.y() + mine)
+                    if abs(delta) <= reach and abs(delta) < miss_y - 1e-6:
+                        miss_y, best_y = abs(delta), pos.y() + delta
+        for other in self.nodes.values():
+            if other is node:
+                continue
+            p, b = other.pos(), other.body
+            if best_x is not None:
+                shared = [best_x + mine for mine in own_x for theirs in (0.0, b.left(), b.right())
+                          if abs(p.x() + theirs - (best_x + mine)) < 1e-6]
+                if shared:  # one line per box, even when centre and edges all agree
+                    lines_x.append((other, shared[0]))
+            if best_y is not None:
+                shared = [best_y + mine for mine in own_y for theirs in (0.0, b.top(), b.bottom())
+                          if abs(p.y() + theirs - (best_y + mine)) < 1e-6]
+                if shared:
+                    lines_y.append((other, shared[0]))
         x = pos.x() if best_x is None else best_x
         y = pos.y() if best_y is None else best_y
         if best_x is None or best_y is None:  # still free on one axis: try the 45° lines
@@ -877,14 +902,16 @@ class DiagramScene(QGraphicsScene):
                 best_y = y if best_y is None else best_y
         self._aligned[node.id] = (best_x, best_y)
         self._clear_guides()
+        for other, gx in lines_x:
+            p = other.pos()
+            self._guide(QLineF(gx, min(y, p.y()) - 40, gx, max(y, p.y()) + 40))
+        for other, gy in lines_y:
+            p = other.pos()
+            self._guide(QLineF(min(x, p.x()) - 70, gy, max(x, p.x()) + 70, gy))
         for other in self.nodes.values():
             if other is node:
                 continue
             p = other.pos()
-            if best_x is not None and p.x() == best_x:
-                self._guide(QLineF(best_x, min(y, p.y()) - 40, best_x, max(y, p.y()) + 40))
-            if best_y is not None and p.y() == best_y:
-                self._guide(QLineF(min(x, p.x()) - 70, best_y, max(x, p.x()) + 70, best_y))
             dx, dy = x - p.x(), y - p.y()
             if dx and abs(dx) == abs(dy):  # on a 45° line through the other box
                 k = 60 if dx > 0 else -60

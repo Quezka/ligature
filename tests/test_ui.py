@@ -219,3 +219,82 @@ def test_cardinality_labels_stay_off_the_entities(app, editor):
         w, h = canvas._width(canvas.SMALL_FONT, edge.label) + 6, canvas._height(canvas.SMALL_FONT)
         box = QPolygonF(QRectF(spot.x() - w / 2, spot.y() - h / 2, w, h))
         assert box.intersected(edge.entity.scene_outline()).isEmpty(), edge.label
+
+
+from PySide6.QtCore import Qt
+from PySide6.QtTest import QTest
+from PySide6.QtWidgets import QApplication
+
+def _setup(window):
+    window.resize(1300, 800)
+    window.show()
+    window.new_diagram(DiagramKind.ER)
+    from ligature.presentation.canvas import Tool
+    window.diagram._add(Tool.ENTITY, 0, 0)
+    pump()
+    return window.diagram.panel.entity.attributes
+
+
+def _focused_row(attrs):
+    focus = QApplication.focusWidget()
+    for i, r in enumerate(attrs.rows):
+        if focus is r["name"]:
+            return i
+    return None
+
+
+def test_enter_in_a_name_goes_straight_to_the_next_name(window):
+    attrs = _setup(window)
+    attrs.add_button.click()
+    pump()
+    QTest.keyClicks(QApplication.focusWidget(), "uno")
+    QTest.keyClick(QApplication.focusWidget(), Qt.Key_Return)
+    QTest.qWait(100)
+    assert len(attrs.rows) == 2 and _focused_row(attrs) == 1
+    QTest.keyClicks(QApplication.focusWidget(), "due")
+    QTest.keyClick(QApplication.focusWidget(), Qt.Key_Return)
+    QTest.qWait(100)
+    assert len(attrs.rows) == 3 and _focused_row(attrs) == 2
+
+
+def test_enter_in_a_type_goes_to_the_next_name(window):
+    attrs = _setup(window)
+    attrs.add_button.click()
+    pump()
+    QTest.keyClicks(QApplication.focusWidget(), "uno")
+    attrs.rows[0]["type"].lineEdit().setFocus()
+    QTest.qWait(50)
+    QTest.keyClick(attrs.rows[0]["type"].lineEdit(), Qt.Key_Return)
+    QTest.qWait(100)
+    assert len(attrs.rows) == 2 and _focused_row(attrs) == 1
+
+
+def test_the_properties_panel_can_be_closed_and_reopened(window):
+    window.resize(1300, 800)
+    window.show()
+    window.new_diagram(DiagramKind.ER)
+    pump()
+    page = window.diagram
+    assert page.panel_holder.isVisible()
+    page.panel_holder.findChildren(type(page.panel_toggle))[0].click()  # the close button
+    assert not page.panel_holder.isVisible() and not page.panel_toggle.isChecked()
+    page.panel_toggle.click()
+    assert page.panel_holder.isVisible()
+
+
+def test_boxes_snap_edge_to_edge(window):
+    from ligature.presentation.canvas import Tool
+    window.resize(1300, 800)
+    window.show()
+    window.new_diagram(DiagramKind.ER)
+    window.diagram._add(Tool.ENTITY, 0, 0)
+    window.diagram._add(Tool.ENTITY, 400, 300)
+    pump()
+    scene = window.diagram.scene
+    a, b = scene.nodes.values()
+    wide = a.body.width()
+    # b's left edge a few pixels off a's right edge: it lands exactly on it.
+    target = a.pos().x() + a.body.right() - b.body.left()
+    scene.clearSelection()
+    pos = scene.align(b, b.pos().__class__(target + 4, 300))
+    assert pos.x() == target and wide > 0

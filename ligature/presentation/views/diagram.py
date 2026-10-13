@@ -3,7 +3,8 @@ from __future__ import annotations
 
 from PySide6.QtCore import QMimeData, Qt, Signal
 from PySide6.QtGui import QCursor, QGuiApplication, QKeySequence, QShortcut
-from PySide6.QtWidgets import QButtonGroup, QHBoxLayout, QMenu, QToolButton, QWidget
+from PySide6.QtWidgets import (QButtonGroup, QHBoxLayout, QMenu, QToolButton, QVBoxLayout,
+                               QWidget)
 from shiboken6 import isValid
 
 from ...application.errors import ApplicationError
@@ -101,6 +102,11 @@ class DiagramPage(Page):
         self.view.zoomChanged.connect(lambda z: self.zoom_label.setText(f"{round(z * 100)}%"))
         for w in (out, self.zoom_label, zoom_in, fit):
             tool_row.addWidget(w)
+        self.panel_toggle = icon_button("side-panel", _("Show or hide the properties panel"),
+                                        checkable=True)
+        self.panel_toggle.setChecked(True)
+        self.panel_toggle.toggled.connect(self.show_panel)
+        tool_row.addWidget(self.panel_toggle)
 
         canvas = Card(padding=0)
         canvas.body.setSpacing(0)
@@ -113,7 +119,15 @@ class DiagramPage(Page):
         body = QHBoxLayout()
         body.setSpacing(14)
         body.addWidget(canvas, 1)
-        body.addWidget(self.panel)
+        self.panel_holder = QWidget()
+        column = QVBoxLayout(self.panel_holder)
+        column.setContentsMargins(0, 0, 0, 0)
+        column.setSpacing(4)
+        close = icon_button("x", _("Close the properties panel"))
+        close.clicked.connect(lambda: self.show_panel(False))
+        column.addWidget(close, 0, Qt.AlignRight)
+        column.addWidget(self.panel, 1)
+        body.addWidget(self.panel_holder)
         self.root.addLayout(body, 1)
 
         # ---- wiring ---------------------------------------------------------------------
@@ -240,7 +254,14 @@ class DiagramPage(Page):
         if id:
             self._edit(id)
 
+    def show_panel(self, shown: bool):
+        self.panel_holder.setVisible(shown)
+        self.panel_toggle.blockSignals(True)
+        self.panel_toggle.setChecked(shown)
+        self.panel_toggle.blockSignals(False)
+
     def _edit(self, id: str):
+        self.show_panel(True)
         self.scene.select_only([id])
         self.panel.focus_name()
 

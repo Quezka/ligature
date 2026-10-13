@@ -99,6 +99,7 @@ _PATHS = {
            'M16 21h3a2 2 0 0 0 2-2v-3"/>',
     "swap": '<path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/>'
             '<path d="M21 13v2a4 4 0 0 1-4 4H3"/>',
+    "side-panel": '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v18"/>',
     "x": '<path d="M18 6L6 18M6 6l12 12"/>',
     "key": '<circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3L21 2M16 7l3 3M18 5l2 2"/>',
     "bell": '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>'
