@@ -4,6 +4,7 @@ Python 3.10+ / PySide6 desktop app (Linux + Windows): ER (Chen / crow's foot) an
 diagrams, with SQL generation. Sibling of Quire (`../quire`): same look, same toolkit, same
 release process.
 
+- The look (theme, icons, translation core, UI scale, dialog fitting, Enter-leaves-the-box, page widgets) comes from the shared `quezka-ui` package (`../suite-kit`); `presentation/theme.py` etc. are one-line aliases to it. Change those files in the kit, not here. The catalogues in `locales/` stay here.
 - Layers: `ligature/domain` → `ligature/application` → `ligature/infrastructure` + `ligature/presentation`; wired in `ligature/bootstrap.py`. `tests/test_architecture.py` enforces it; the UI never imports the domain (enums come through `application/types.py`).
 - Run: `.venv/bin/ligature --demo`. Test: `.venv/bin/python -m pytest -q`. Headless UI checks: `QT_QPA_PLATFORM=offscreen`.
 - All edits go through `application/editor.Editor` (immutable `Diagram` snapshots → undo/redo; edits to one item merge into one undo step until `end_group()`).

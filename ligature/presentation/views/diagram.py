@@ -69,7 +69,7 @@ class DiagramPage(Page):
                 (Tool.RELATIONSHIP, "relationship", _("Relationship"), "R"),
                 (Tool.GENERALISATION, "inherit", _("Generalisation"), "G"),
                 (Tool.CLASS, "class", _("Class"), "C"),
-                (Tool.LINK, "link", _("Link"), "L")):
+                (Tool.LINK, "arrow-up-right", _("Link"), "L")):
             b = QToolButton(objectName="tool", text=text, checkable=True)
             b.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
             b.setToolTip(f"{text}  ({key})")
