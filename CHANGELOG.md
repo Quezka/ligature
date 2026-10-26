@@ -4,6 +4,10 @@ All notable changes to Ligature. Versions follow [Semantic Versioning](https://s
 patch for fixes, minor for new features, major for breaking changes (while below 1.0,
 breaking changes bump the minor version).
 
+## [0.10.0] - 2026-10-26
+
+- The look now comes from the suite's shared toolkit: darker text and firmer borders, larger captions, and a High contrast option in Settings.
+
 ## [0.9.1] - 2026-10-26
 
 - The window can be made much narrower: when the room is short, the tool buttons show only their icons (the tooltips
