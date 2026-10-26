@@ -57,6 +57,11 @@
 
   <!-- Newest first. Every released version needs an entry; tests enforce it. -->
   <releases>
+    <release version="0.9.1" date="2026-10-26">
+      <description>
+        <p>The window can be made much narrower: the tool buttons show only their icons when the room is short.</p>
+      </description>
+    </release>
     <release version="0.9.0" date="2026-10-26">
       <description>
         <p>Align or evenly spread a group of selected items. Notes for the database on the diagram and on every entity, relationship and class, saved in the file and written into the generated SQL as comments.</p>

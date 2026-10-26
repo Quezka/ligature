@@ -1,7 +1,7 @@
 """The drawing page: tools on top, the canvas, and the properties panel beside it."""
 from __future__ import annotations
 
-from PySide6.QtCore import QMimeData, Qt, Signal
+from PySide6.QtCore import QMimeData, QSize, Qt, Signal
 from PySide6.QtGui import QCursor, QGuiApplication, QKeySequence, QShortcut
 from PySide6.QtWidgets import (QButtonGroup, QHBoxLayout, QMenu, QToolButton, QVBoxLayout,
                                QWidget)
@@ -202,6 +202,24 @@ class DiagramPage(Page):
     def set_heading(self, title: str, subtitle: str):
         self.title.setText(title)
         self.subtitle.setText(subtitle)
+
+    def minimumSizeHint(self):
+        # What the page needs is what it can shrink to once the tool buttons are icon-only, not
+        # what it needs while they carry words (that would pin the window at 1600 px).
+        return QSize(720, 300)
+
+    NARROW = 1040  # below this much room for the canvas card, the tool buttons lose their words
+
+    def resizeEvent(self, event):
+        """Follow the window: the toolbar's words make the page 1400 px wide at the least, more than
+        a small laptop screen has. Without them it fits anywhere, and the tooltips still say what
+        each button is."""
+        super().resizeEvent(event)
+        room = self.width() - (self.panel_holder.width() if self.panel_holder.isVisible() else 0)
+        style = Qt.ToolButtonIconOnly if room < self.NARROW else Qt.ToolButtonTextBesideIcon
+        for b in self.tool_buttons.values():
+            if b.toolButtonStyle() != style:
+                b.setToolButtonStyle(style)
 
     def align(self, mode: str):
         """Line up (or spread out) the selected items; one undo step."""

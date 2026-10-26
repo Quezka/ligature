@@ -363,3 +363,24 @@ def test_notes_are_kept_in_the_file_and_travel_into_the_sql(window):
     page.scene.select_only([])
     pump()
     assert page.panel.diagram_panel.notes.toPlainText() == "PostgreSQL 16. Names in snake_case."
+
+
+def test_the_diagram_page_can_shrink_to_a_small_window(window):
+    """The tool buttons give up their words when the room is short, so the window isn't pinned wide.
+    (The offscreen screen is small, so the threshold is moved instead of the window.)"""
+    from PySide6.QtCore import QSize, Qt
+    from PySide6.QtGui import QResizeEvent
+    window.open_sample("university")
+    window.show()
+    pump()
+    page = window.diagram
+    assert page.minimumSizeHint().width() <= 800  # not the 1400 the words would need
+
+    def settle(narrow_below):
+        page.NARROW = narrow_below
+        page.resizeEvent(QResizeEvent(page.size(), QSize(0, 0)))
+        return {b.toolButtonStyle() for b in page.tool_buttons.values()}
+
+    assert settle(1) == {Qt.ToolButtonTextBesideIcon}  # plenty of room: words
+    assert settle(100000) == {Qt.ToolButtonIconOnly}  # short of room: icons
+    assert settle(1) == {Qt.ToolButtonTextBesideIcon}  # and back

@@ -4,6 +4,11 @@ All notable changes to Ligature. Versions follow [Semantic Versioning](https://s
 patch for fixes, minor for new features, major for breaking changes (while below 1.0,
 breaking changes bump the minor version).
 
+## [0.9.1] - 2026-10-26
+
+- The window can be made much narrower: when the room is short, the tool buttons show only their icons (the tooltips
+  still name them) instead of holding the window at 1600 px wide.
+
 ## [0.9.0] - 2026-10-26
 
 ### Added
