@@ -298,3 +298,68 @@ def test_boxes_snap_edge_to_edge(window):
     scene.clearSelection()
     pos = scene.align(b, b.pos().__class__(target + 4, 300))
     assert pos.x() == target and wide > 0
+
+
+def test_a_group_can_be_lined_up_and_spread_out(window):
+    window.resize(1300, 800)
+    window.show()
+    window.open_sample("university")
+    pump()
+    page = window.diagram
+    d = window.editor.diagram()
+    ids = [e.id for e in d.entities][:3]
+    assert len(ids) == 3
+    assert not page.align_button.isEnabled()
+    page.scene.select_only(ids[:1])
+    assert not page.align_button.isEnabled()  # one item has nothing to line up with
+    page.scene.select_only(ids)
+    pump()
+    assert page.align_button.isEnabled()
+
+    def rects():
+        return [page.scene.nodes[i].mapRectToScene(page.scene.nodes[i].body) for i in ids]
+
+    page.align("left")
+    pump()
+    lefts = [round(r.left(), 1) for r in rects()]
+    assert max(lefts) - min(lefts) < 0.2  # all left edges on one line
+    page.align("top")
+    pump()
+    tops = [round(r.top(), 1) for r in rects()]
+    assert max(tops) - min(tops) < 0.2
+    page.align("hspace")
+    pump()
+    ordered = sorted(rects(), key=lambda r: r.left())
+    gaps = [round(b.left() - a.right(), 1) for a, b in zip(ordered, ordered[1:])]
+    assert abs(gaps[0] - gaps[1]) < 0.3  # equal gaps between the boxes
+    window.editor.undo()
+    window.editor.undo()
+    window.editor.undo()
+    pump()
+    assert [round(r.left()) for r in rects()] != [round(rects()[0].left())] * 3  # undone, in order
+    page.scene.select_only(ids[:2])
+    assert page.scene.aligned_positions("hspace") == {}  # spreading needs three
+
+
+def test_notes_are_kept_in_the_file_and_travel_into_the_sql(window):
+    from ligature.application.inputs import EntityInput
+    window.open_sample("university")
+    pump()
+    e = window.editor
+    person = next(x for x in e.diagram().entities if x.name == "Persona")
+    from ligature.application.inputs import AttributeInput
+    attrs = tuple(AttributeInput(a.name, a.type, a.key, a.optional) for a in person.attributes)
+    e.update_entity(person.id, EntityInput(person.name, attrs, person.weak, "About 20,000 rows.\nNever delete."))
+    e.set_notes("PostgreSQL 16. Names in snake_case.")
+    assert e.diagram().find(person.id).notes.startswith("About 20,000")
+    assert e.diagram().notes == "PostgreSQL 16. Names in snake_case."
+    sql = e.schema().sql
+    assert sql.startswith("-- Notes\n-- PostgreSQL 16. Names in snake_case.")
+    assert "-- Persona: About 20,000 rows." in sql and "-- Never delete." in sql
+    page = window.diagram
+    page.scene.select_only([person.id])
+    pump()
+    assert page.panel.entity.notes.toPlainText().startswith("About 20,000")
+    page.scene.select_only([])
+    pump()
+    assert page.panel.diagram_panel.notes.toPlainText() == "PostgreSQL 16. Names in snake_case."

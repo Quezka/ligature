@@ -77,3 +77,20 @@ def test_missing_file_and_newer_versions(tmp_path):
 def test_writing_into_a_missing_folder_fails_clearly(tmp_path):
     with pytest.raises(FileAccessError):
         JsonDiagramFiles().write(str(tmp_path / "no" / "such" / "a.ligature"), b"{}")
+
+
+def test_notes_survive_saving_and_opening(editor):
+    from dataclasses import replace
+    school_er(editor)
+    d = editor.diagram()
+    first = d.entities[0]
+    editor.set_notes("Oracle 19c.\nNames in English.")
+    from ligature.application.inputs import AttributeInput, EntityInput
+    editor.update_entity(first.id, EntityInput(
+        first.name, tuple(AttributeInput(a.name, a.type, a.key, a.optional) for a in first.attributes),
+        first.weak, "Check digit on the code."))
+    data = editor.encode(FileFormat.LIGATURE)
+    again = JsonDiagramFiles().decode(data)
+    assert again.notes == "Oracle 19c.\nNames in English."
+    assert again.entities[0].notes == "Check digit on the code."
+    assert replace(again, notes="").entities[1].notes == ""  # others stay empty

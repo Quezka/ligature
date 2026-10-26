@@ -89,18 +89,24 @@ def _attributes_json(items):
             for a in items]
 
 
+def _notes_json(item) -> dict:
+    return {"notes": item.notes} if item.notes else {}
+
+
 def to_json(d: Diagram) -> dict:
     out = {"format": FORMAT, "version": VERSION, "kind": d.kind.value, "title": d.title}
+    if d.notes:
+        out["notes"] = d.notes
     if d.kind is DiagramKind.ER:
         out["notation"] = d.notation.value
         out["entities"] = [
             {"id": e.id, "name": e.name, "x": e.pos.x, "y": e.pos.y, "weak": e.weak,
-             "attributes": _attributes_json(e.attributes)} for e in d.entities]
+             "attributes": _attributes_json(e.attributes), **_notes_json(e)} for e in d.entities]
         out["relationships"] = [
             {"id": r.id, "name": r.name, "x": r.pos.x, "y": r.pos.y,
              "participants": [{"entity": p.entity_id, "cardinality": str(p.cardinality),
                                "role": p.role} for p in r.participants],
-             "attributes": _attributes_json(r.attributes)} for r in d.relationships]
+             "attributes": _attributes_json(r.attributes), **_notes_json(r)} for r in d.relationships]
         out["generalisations"] = [
             {"id": g.id, "parent": g.parent, "children": list(g.children), "total": g.total,
              "exclusive": g.exclusive, "mapping": g.mapping.value}
@@ -109,7 +115,7 @@ def to_json(d: Diagram) -> dict:
         out["classes"] = [
             {"id": c.id, "name": c.name, "x": c.pos.x, "y": c.pos.y, "kind": c.kind.value,
              "attributes": [str(m) for m in c.attributes],
-             "operations": [str(m) for m in c.operations]} for c in d.classes]
+             "operations": [str(m) for m in c.operations], **_notes_json(c)} for c in d.classes]
         out["links"] = [
             {"id": link.id, "kind": link.kind.value, "source": link.source,
              "target": link.target, "source_multiplicity": link.source_multiplicity,
@@ -137,16 +143,16 @@ def from_json(data: dict) -> Diagram:
     return Diagram(
         kind, str(data.get("title", "")), Notation(data.get("notation", "chen")),
         tuple(Entity(str(e["id"]), str(e["name"]), Point(float(e["x"]), float(e["y"])),
-                     _attributes(e.get("attributes")), bool(e.get("weak")))
+                     _attributes(e.get("attributes")), bool(e.get("weak")), str(e.get("notes", "")))
               for e in data.get("entities", ())),
         tuple(Relationship(
             str(r["id"]), str(r["name"]), Point(float(r["x"]), float(r["y"])),
             tuple(Participant(str(p["entity"]), Cardinality.parse(p.get("cardinality", "(0,N)")),
                               str(p.get("role", ""))) for p in r.get("participants", ())),
-            _attributes(r.get("attributes"))) for r in data.get("relationships", ())),
+            _attributes(r.get("attributes")), str(r.get("notes", ""))) for r in data.get("relationships", ())),
         tuple(UmlClass(str(c["id"]), str(c["name"]), Point(float(c["x"]), float(c["y"])),
                        ClassKind(c.get("kind", "class")), _members(c.get("attributes")),
-                       _members(c.get("operations"))) for c in data.get("classes", ())),
+                       _members(c.get("operations")), str(c.get("notes", ""))) for c in data.get("classes", ())),
         tuple(Link(str(link["id"]), LinkKind(link["kind"]), str(link["source"]),
                    str(link["target"]), str(link.get("source_multiplicity", "")),
                    str(link.get("target_multiplicity", "")), str(link.get("label", "")))
@@ -155,6 +161,7 @@ def from_json(data: dict) -> Diagram:
                              bool(g.get("total")), bool(g.get("exclusive", True)),
                              Mapping(g.get("mapping", "separate")))
               for g in data.get("generalisations", ())),
+        str(data.get("notes", "")),
     )
 
 

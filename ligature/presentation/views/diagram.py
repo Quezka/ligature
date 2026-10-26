@@ -102,6 +102,23 @@ class DiagramPage(Page):
         self.view.zoomChanged.connect(lambda z: self.zoom_label.setText(f"{round(z * 100)}%"))
         for w in (out, self.zoom_label, zoom_in, fit):
             tool_row.addWidget(w)
+        self.align_button = QToolButton(objectName="icon",
+                                        toolTip=_("Line up the selected items (select two or more)"))
+        self.align_button.setPopupMode(QToolButton.InstantPopup)
+        theme.set_icon(self.align_button, "align", "muted")
+        align_menu = QMenu(self.align_button)
+        for text, mode in ((_("Align left edges"), "left"), (_("Centre horizontally"), "hcenter"),
+                           (_("Align right edges"), "right"), (None, None),
+                           (_("Align tops"), "top"), (_("Centre vertically"), "vcenter"),
+                           (_("Align bottoms"), "bottom"), (None, None),
+                           (_("Space evenly across"), "hspace"), (_("Space evenly down"), "vspace")):
+            if text is None:
+                align_menu.addSeparator()
+            else:
+                align_menu.addAction(text, lambda m=mode: self.align(m))
+        self.align_button.setMenu(align_menu)
+        self.align_button.setEnabled(False)
+        tool_row.addWidget(self.align_button)
         self.panel_toggle = icon_button("side-panel", _("Show or hide the properties panel"),
                                         checkable=True)
         self.panel_toggle.setChecked(True)
@@ -186,7 +203,15 @@ class DiagramPage(Page):
         self.title.setText(title)
         self.subtitle.setText(subtitle)
 
+    def align(self, mode: str):
+        """Line up (or spread out) the selected items; one undo step."""
+        moves = self.scene.aligned_positions(mode)
+        if moves:
+            self._try(lambda: self.editor.move(moves))
+
     def _selection_changed(self):
+        if isValid(self.scene):
+            self.align_button.setEnabled(sum(1 for i in self.scene.selected_ids() if i in self.scene.nodes) >= 2)
         if isValid(self.scene) and isValid(self.panel) and self.scene.record is not None:
             self.panel.show_selection(self.scene.selected_ids(), self.editor.diagram())
 

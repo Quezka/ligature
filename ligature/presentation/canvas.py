@@ -1026,6 +1026,49 @@ class DiagramScene(QGraphicsScene):
                 ids.append(item.id)
         return ids
 
+    def aligned_positions(self, mode: str) -> dict[str, tuple[float, float]]:
+        """Where the selected items go to line up: "left", "hcenter", "right", "top", "vcenter",
+        "bottom", or "hspace" / "vspace" to spread them with equal gaps. Items are measured by
+        their shapes as drawn, not their centres, so boxes of different sizes line up by their edges."""
+        picked = [(self.nodes[i], self.nodes[i].mapRectToScene(self.nodes[i].body))
+                  for i in self.selected_ids() if i in self.nodes]
+        if len(picked) < 2 or (mode in ("hspace", "vspace") and len(picked) < 3):
+            return {}
+        moves: dict[str, tuple[float, float]] = {}
+
+        def put(node, dx=0.0, dy=0.0):
+            moves[node.id] = (node.pos().x() + dx, node.pos().y() + dy)
+
+        if mode in ("left", "right", "hcenter"):
+            target = {"left": min(r.left() for _n, r in picked),
+                      "right": max(r.right() for _n, r in picked),
+                      "hcenter": (min(r.left() for _n, r in picked) + max(r.right() for _n, r in picked)) / 2}[mode]
+            for node, r in picked:
+                put(node, dx={"left": target - r.left(), "right": target - r.right(),
+                              "hcenter": target - r.center().x()}[mode])
+        elif mode in ("top", "bottom", "vcenter"):
+            target = {"top": min(r.top() for _n, r in picked),
+                      "bottom": max(r.bottom() for _n, r in picked),
+                      "vcenter": (min(r.top() for _n, r in picked) + max(r.bottom() for _n, r in picked)) / 2}[mode]
+            for node, r in picked:
+                put(node, dy={"top": target - r.top(), "bottom": target - r.bottom(),
+                              "vcenter": target - r.center().y()}[mode])
+        elif mode == "hspace":
+            ordered = sorted(picked, key=lambda p: p[1].center().x())
+            gap = (ordered[-1][1].right() - ordered[0][1].left() - sum(r.width() for _n, r in ordered)) / (len(ordered) - 1)
+            x = ordered[0][1].left()
+            for node, r in ordered:
+                put(node, dx=x - r.left())
+                x += r.width() + gap
+        elif mode == "vspace":
+            ordered = sorted(picked, key=lambda p: p[1].center().y())
+            gap = (ordered[-1][1].bottom() - ordered[0][1].top() - sum(r.height() for _n, r in ordered)) / (len(ordered) - 1)
+            y = ordered[0][1].top()
+            for node, r in ordered:
+                put(node, dy=y - r.top())
+                y += r.height() + gap
+        return moves
+
     def select_only(self, ids):
         self.blockSignals(True)
         self.clearSelection()

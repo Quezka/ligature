@@ -189,12 +189,16 @@ class Editor:
                               for fk in t.foreign_keys))
             for t in schema.tables)
         return SchemaRecord(tables, tuple(IssueRecord(i.kind, i.subject) for i in schema.issues),
-                            to_sql(schema, dialect))
+                            _notes_comment(self._diagram) + to_sql(schema, dialect))
 
     # ---- the whole diagram ---------------------------------------------------------------
 
     def set_title(self, title: str):
         self._commit(replace(self._diagram, title=title.strip()), group="title")
+
+    def set_notes(self, notes: str):
+        """The notes about the whole database."""
+        self._commit(replace(self._diagram, notes=notes.rstrip()), group="notes")
 
     def set_notation(self, notation: Notation):
         self._commit(replace(self._diagram, notation=notation))
@@ -300,7 +304,7 @@ class Editor:
     def update_entity(self, id: str, data: EntityInput):
         e = self._get(self._diagram.entity, id)
         self._commit(self._diagram.put(replace(
-            e, name=data.name.strip() or e.name, weak=data.weak,
+            e, name=data.name.strip() or e.name, weak=data.weak, notes=data.notes.rstrip(),
             attributes=_attributes(data.attributes))), group=f"edit:{id}")
 
     def add_relationship(self, entity_ids: list[str], name: str = "Relationship",
@@ -328,7 +332,7 @@ class Editor:
                                             p.role.strip()))
         self._commit(self._diagram.put(replace(
             r, name=data.name.strip() or r.name, participants=tuple(participants),
-            attributes=_attributes(data.attributes))), group=f"edit:{id}")
+            attributes=_attributes(data.attributes), notes=data.notes.rstrip())), group=f"edit:{id}")
 
     def add_generalisation(self, child: str, parent: str) -> str:
         """Make `child` a specialisation of `parent`; it joins the parent's generalisation
@@ -380,8 +384,8 @@ class Editor:
         c = self._get(self._diagram.uml_class, id)
         self._commit(self._diagram.put(replace(
             c, name=data.name.strip() or c.name, kind=data.kind,
-            attributes=_members(data.attributes), operations=_members(data.operations))),
-            group=f"edit:{id}")
+            attributes=_members(data.attributes), operations=_members(data.operations),
+            notes=data.notes.rstrip())), group=f"edit:{id}")
 
     def add_link(self, kind: LinkKind, source: str, target: str) -> str:
         self._get(self._diagram.uml_class, source)
@@ -438,20 +442,35 @@ def diagram_record(d: Diagram) -> DiagramRecord:
     return DiagramRecord(
         d.kind, d.title, d.notation,
         tuple(EntityRecord(e.id, e.name, e.pos.x, e.pos.y, _attribute_records(e.attributes),
-                           e.weak) for e in d.entities),
+                           e.weak, e.notes) for e in d.entities),
         tuple(RelationshipRecord(
             r.id, r.name, r.pos.x, r.pos.y,
             tuple(ParticipantRecord(p.entity_id, str(p.cardinality), p.cardinality.min,
                                     p.cardinality.many, p.role) for p in r.participants),
-            _attribute_records(r.attributes)) for r in d.relationships),
+            _attribute_records(r.attributes), r.notes) for r in d.relationships),
         tuple(ClassRecord(c.id, c.name, c.pos.x, c.pos.y, c.kind,
-                          _member_records(c.attributes), _member_records(c.operations))
+                          _member_records(c.attributes), _member_records(c.operations), c.notes)
               for c in d.classes),
         tuple(LinkRecord(link.id, link.kind, link.source, link.target, link.source_multiplicity,
                          link.target_multiplicity, link.label) for link in d.links),
         tuple(GeneralisationRecord(g.id, g.parent, g.children, g.total, g.exclusive, g.mapping,
                                    g.label) for g in d.generalisations),
+        d.notes,
     )
 
 
 __all__ = ["Change", "ClassKind", "Editor", "file_format"]
+
+
+def _comment(text: str) -> list[str]:
+    return [f"-- {line}".rstrip() for line in text.strip().splitlines()]
+
+
+def _notes_comment(d: Diagram) -> str:
+    """The notes written on the diagram, as SQL comments at the top of the script, so what the
+    designer wrote down travels with the tables."""
+    lines = _comment(d.notes) if d.notes.strip() else []
+    for item in (*d.entities, *d.relationships):
+        if item.notes.strip():
+            lines += ([""] if lines else []) + _comment(f"{item.name}: {item.notes.strip()}")
+    return "\n".join(["-- Notes", *lines]) + "\n\n" if lines else ""

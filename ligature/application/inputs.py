@@ -19,6 +19,7 @@ class EntityInput:
     name: str
     attributes: tuple[AttributeInput, ...] = ()
     weak: bool = False
+    notes: str = ""
 
 
 @dataclass(frozen=True)
@@ -33,6 +34,7 @@ class RelationshipInput:
     name: str
     participants: tuple[ParticipantInput, ...] = ()
     attributes: tuple[AttributeInput, ...] = ()
+    notes: str = ""
 
 
 @dataclass(frozen=True)
@@ -41,6 +43,7 @@ class ClassInput:
     kind: ClassKind = ClassKind.CLASS
     attributes: str = ""  # one per line: "- nome: String"
     operations: str = ""  # one per line: "+ getNome(): String"
+    notes: str = ""
 
 
 @dataclass(frozen=True)

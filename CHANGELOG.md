@@ -4,6 +4,16 @@ All notable changes to Ligature. Versions follow [Semantic Versioning](https://s
 patch for fixes, minor for new features, major for breaking changes (while below 1.0,
 breaking changes bump the minor version).
 
+## [0.9.0] - 2026-10-26
+
+### Added
+- **Align a group.** Select two or more items and use the new Align button: left edges, centres, right edges, tops,
+  middles and bottoms, or spread three or more evenly across or down. Boxes of different sizes line up by their edges,
+  and the whole thing is one undo step.
+- **Notes for the database.** A Notes box on the diagram (DBMS, naming rules, business rules, assumptions), on every
+  entity, relationship and class (expected volume, constraints, formats, defaults). They are saved in the file and
+  written at the top of the generated SQL as comments, so they travel with the tables.
+
 ## [0.8.0] - 2026-10-13
 
 - Alignment guides also snap a box's edges (left/right, top/bottom) to the edges and centres of the other boxes.

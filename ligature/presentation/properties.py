@@ -68,6 +68,21 @@ def _select(combo: QComboBox, value):
         combo.blockSignals(False)
 
 
+def notes_box(placeholder: str) -> QPlainTextEdit:
+    """A free-text box for what the diagram can't show: rules, volumes, constraints."""
+    box = QPlainTextEdit(placeholderText=placeholder)
+    box.setTabChangesFocus(True)
+    box.setMinimumHeight(96)
+    return box
+
+
+def load_notes(box: QPlainTextEdit, text: str):
+    """Show saved notes without making the box say it was edited."""
+    box.blockSignals(True)
+    _set_text(box, text)
+    box.blockSignals(False)
+
+
 class SectionPanel(QWidget):
     """One kind of thing's editor. `send` runs a use case with errors shown in the panel."""
 
@@ -238,13 +253,24 @@ class DiagramPanel(SectionPanel):
         self.counts = label()
         self.help = label("", "hint")
         self.help.setWordWrap(True)
+        self.notes = notes_box(_("About the whole database: which DBMS, naming rules, business "
+                                 "rules, assumptions, who owns the data…"))
+        self.notes.textChanged.connect(lambda: self.send(lambda: self.editor.set_notes(self.notes.toPlainText())))
+        self.notes.installEventFilter(self)
         for w in (caption(_("Title")), self.title, self.notation_caption, self.notation,
-                  self.counts, self.help, self.error):
+                  caption(_("Notes")), self.notes, self.counts, self.help, self.error):
             self.layout_.addWidget(w)
         self.layout_.addStretch()
 
+    def eventFilter(self, obj, event):
+        from PySide6.QtCore import QEvent
+        if obj is self.notes and event.type() == QEvent.FocusOut:
+            self.done_editing()
+        return super().eventFilter(obj, event)
+
     def load(self, d: DiagramRecord):
         _set_text(self.title, d.title)
+        load_notes(self.notes, d.notes)
         er = d.kind is DiagramKind.ER
         self.notation_caption.setVisible(er)
         self.notation.setVisible(er)
@@ -279,8 +305,11 @@ class EntityPanel(SectionPanel):
         hint = label(_("The key icon marks the identifier (the primary key). “0,1” marks an "
                        "optional attribute."), "hint")
         hint.setWordWrap(True)
+        self.notes = notes_box(_("What the database needs to know: expected volume, rules, "
+                                 "constraints, formats, defaults, who may change it…"))
+        self.notes.textChanged.connect(self.commit)
         for w in (caption(_("Entity")), self.name, self.weak, caption(_("Attributes")),
-                  self.attributes, hint, self.error):
+                  self.attributes, hint, caption(_("Notes")), self.notes, self.error):
             self.layout_.addWidget(w)
         self.layout_.addStretch()
 
@@ -291,11 +320,12 @@ class EntityPanel(SectionPanel):
         self.weak.setChecked(e.weak)
         self.weak.blockSignals(False)
         self.attributes.set_attributes(e.attributes)
+        load_notes(self.notes, e.notes)
 
     def commit(self):
         if self.id:
             data = EntityInput(self.name.text(), self.attributes.attributes(),
-                               self.weak.isChecked())
+                               self.weak.isChecked(), self.notes.toPlainText())
             self.send(lambda: self.editor.update_entity(self.id, data))
 
 
@@ -322,9 +352,11 @@ class RelationshipPanel(SectionPanel):
         hint.setWordWrap(True)
         grid_box = QWidget()
         grid_box.setLayout(self.grid)
+        self.notes = notes_box(_("Rules and constraints for this relationship…"))
+        self.notes.textChanged.connect(self.commit)
         for w in (caption(_("Relationship")), self.name, caption(_("Entities")), grid_box,
                   self.add_participant, hint, caption(_("Attributes")), self.attributes,
-                  self.error):
+                  caption(_("Notes")), self.notes, self.error):
             self.layout_.addWidget(w, 0, Qt.AlignLeft if w is self.add_participant else Qt.Alignment())
         self.layout_.addStretch()
         self.entities: list[tuple[str, str]] = []
@@ -333,6 +365,7 @@ class RelationshipPanel(SectionPanel):
         self.id = r.id
         self.entities = [(e.id, e.name) for e in entities]
         _set_text(self.name, r.name)
+        load_notes(self.notes, r.notes)
         if len(r.participants) != len(self.rows) or any(
                 row["entity"].count() != len(self.entities) for row in self.rows):
             while self.rows:
@@ -397,7 +430,8 @@ class RelationshipPanel(SectionPanel):
         participants = tuple(ParticipantInput(r["entity"].currentData(), r["card"].currentData(),
                                               r["role"].text()) for r in self.rows
                              if r["entity"].currentData())
-        data = RelationshipInput(self.name.text(), participants, self.attributes.attributes())
+        data = RelationshipInput(self.name.text(), participants, self.attributes.attributes(),
+                                 self.notes.toPlainText())
         self.send(lambda: self.editor.update_relationship(self.id, data))
 
 
@@ -420,8 +454,11 @@ class ClassPanel(SectionPanel):
                        "write “static” or “abstract” before the name to underline it or put it "
                        "in italics."), "hint")
         hint.setWordWrap(True)
+        self.notes = notes_box(_("What the class is for, rules, constraints…"))
+        self.notes.textChanged.connect(self._typed)
         for w in (caption(_("Class")), self.name, self.kind, caption(_("Attributes")),
-                  self.attributes, caption(_("Operations")), self.operations, hint, self.error):
+                  self.attributes, caption(_("Operations")), self.operations, hint,
+                  caption(_("Notes")), self.notes, self.error):
             self.layout_.addWidget(w)
         self.layout_.addStretch()
         self._loading = False
@@ -433,6 +470,7 @@ class ClassPanel(SectionPanel):
         _select(self.kind, c.kind)
         _set_text(self.attributes, "\n".join(m.line for m in c.attributes))
         _set_text(self.operations, "\n".join(m.line for m in c.operations))
+        load_notes(self.notes, c.notes)
         self._loading = False
 
     def _typed(self):
@@ -442,7 +480,8 @@ class ClassPanel(SectionPanel):
     def commit(self):
         if self.id:
             data = ClassInput(self.name.text(), self.kind.currentData(),
-                              self.attributes.toPlainText(), self.operations.toPlainText())
+                              self.attributes.toPlainText(), self.operations.toPlainText(),
+                              self.notes.toPlainText())
             self.send(lambda: self.editor.update_class(self.id, data))
 
     def focusOutEvent(self, event):

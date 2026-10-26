@@ -73,6 +73,7 @@ class Entity:
     pos: Point
     attributes: tuple[Attribute, ...] = ()
     weak: bool = False  # identified through a relationship to another entity as well
+    notes: str = ""  # free text for the database: rules, volumes, constraints
 
     @property
     def key(self) -> tuple[Attribute, ...]:
@@ -115,6 +116,7 @@ class Relationship:
     pos: Point
     participants: tuple[Participant, ...] = ()
     attributes: tuple[Attribute, ...] = ()
+    notes: str = ""
 
     @property
     def recursive(self) -> bool:
@@ -195,6 +197,7 @@ class UmlClass:
     kind: ClassKind = ClassKind.CLASS
     attributes: tuple[Member, ...] = ()
     operations: tuple[Member, ...] = ()
+    notes: str = ""
 
 
 @dataclass(frozen=True)
@@ -223,6 +226,7 @@ class Diagram:
     classes: tuple[UmlClass, ...] = ()
     links: tuple[Link, ...] = ()
     generalisations: tuple[Generalisation, ...] = ()
+    notes: str = ""  # about the whole database: DBMS, naming rules, assumptions
 
     # ---- lookups --------------------------------------------------------------------
 

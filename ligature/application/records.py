@@ -22,6 +22,7 @@ class EntityRecord:
     y: float
     attributes: tuple[AttributeRecord, ...]
     weak: bool
+    notes: str = ""
 
 
 @dataclass(frozen=True)
@@ -41,6 +42,7 @@ class RelationshipRecord:
     y: float
     participants: tuple[ParticipantRecord, ...]
     attributes: tuple[AttributeRecord, ...]
+    notes: str = ""
 
 
 @dataclass(frozen=True)
@@ -61,6 +63,7 @@ class ClassRecord:
     kind: ClassKind
     attributes: tuple[MemberRecord, ...]
     operations: tuple[MemberRecord, ...]
+    notes: str = ""
 
 
 @dataclass(frozen=True)
@@ -95,6 +98,7 @@ class DiagramRecord:
     classes: tuple[ClassRecord, ...] = ()
     links: tuple[LinkRecord, ...] = ()
     generalisations: tuple[GeneralisationRecord, ...] = ()
+    notes: str = ""
 
     def find(self, id: str):
         for group in (self.entities, self.relationships, self.classes, self.links,
