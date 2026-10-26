@@ -11,6 +11,7 @@ PLURALS = {
 }
 
 MESSAGES = {
+    'High contrast (black and white, thick lines)': 'Высокая контрастность (чёрное и белое, толстые линии)',
     'Interface size': 'Размер интерфейса',
     'Automatic': 'Автоматически',
     'Applies after a restart. Automatic makes everything a little smaller on small screens.': 'Применяется после перезапуска. Автоматический режим делает всё немного меньше на маленьких экранах.',
