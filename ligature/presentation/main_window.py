@@ -38,16 +38,17 @@ class Sidebar(QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("sidebar")
-        self.setFixedWidth(173)
+        self.setFixedWidth(self.WIDE)
         self.group = QButtonGroup(self)
         self.group.setExclusive(True)
         brand_icon = QLabel()
         brand_icon.setPixmap(QIcon(str(APP_ICON)).pixmap(28, 28))
-        brand = QHBoxLayout()
+        brand = self.brand_row = QHBoxLayout()
         brand.setContentsMargins(12, 4, 12, 0)
         brand.setSpacing(10)
         brand.addWidget(brand_icon)
-        brand.addWidget(QLabel(_("Ligature"), objectName="brand"))
+        self.brand = QLabel(_("Ligature"), objectName="brand")
+        brand.addWidget(self.brand)
         brand.addStretch()
         self.nav = QVBoxLayout()
         self.nav.setSpacing(2)
@@ -61,6 +62,17 @@ class Sidebar(QFrame):
         layout.addLayout(self.nav)
         layout.addStretch()
         layout.addLayout(self.footer)
+
+    WIDE, COMPACT = 173, 56
+
+    def set_compact(self, compact: bool):
+        """Icons only, for a narrow window (the tooltips still name each page)."""
+        self.setFixedWidth(self.COMPACT if compact else self.WIDE)
+        self.brand.setVisible(not compact)
+        self.brand_row.setContentsMargins(*((5, 4, 0, 0) if compact else (12, 4, 12, 0)))
+        style = Qt.ToolButtonIconOnly if compact else Qt.ToolButtonTextBesideIcon
+        for b in self.findChildren(QToolButton, "nav"):
+            b.setToolButtonStyle(style)
 
     def nav_button(self, icon_name: str, text: str, checkable: bool = True) -> QToolButton:
         button = QToolButton(objectName="nav", text=f"  {text}", checkable=checkable)
@@ -87,7 +99,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.services = services
         self.editor = services.editor
-        clamp_window(self, 1320, 840, 1000, 640)
+        clamp_window(self, 1320, 840, 640, 520)
         self.setAcceptDrops(True)
 
         self.relay = ChangeRelay(self.editor, self)
@@ -133,6 +145,12 @@ class MainWindow(QMainWindow):
         self.home.set_recent(self.recent_files())
         self._document_changed()
         self.show_page(self.HOME)
+
+    COMPACT_BELOW = 1000  # window width below which the sidebar shows only icons
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.sidebar.set_compact(self.width() < self.COMPACT_BELOW)
 
     # ---- pages ------------------------------------------------------------------------
 

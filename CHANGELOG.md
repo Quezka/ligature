@@ -4,6 +4,20 @@ All notable changes to Ligature. Versions follow [Semantic Versioning](https://s
 patch for fixes, minor for new features, major for breaking changes (while below 1.0,
 breaking changes bump the minor version).
 
+## [0.11.0] - 2026-11-03
+
+### Added
+- **Swap cardinalities.** A button in a relationship's properties puts each side's (min,max) on the other side, for
+  when they were entered the wrong way round (each entity keeps its role). One undo step.
+
+### Fixed
+- **Half a screen works.** The window can now be as narrow as half a laptop screen (683 px): the sidebar shows only
+  icons, and the properties panel floats over the right side of the canvas instead of being pushed out of the window.
+  It starts closed there; double-click an item or use the panel button to open it.
+- The Align button is always clickable and its menu says what to select (two or more items, three to space them
+  evenly); before, it was greyed out without saying why.
+- The Align and Export buttons show the hand cursor like the other buttons.
+
 ## [0.10.4] - 2026-10-27
 
 Fixed: the compact text size now reaches labels, buttons, menus and lists too (the desktop theme was keeping them at the system's larger size), so the whole interface really is smaller.

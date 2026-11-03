@@ -68,6 +68,21 @@ def test_relationships_and_cascading_delete(editor):
     assert len(editor.diagram().relationships) == 1
 
 
+def test_swapping_cardinalities_puts_each_on_the_other_side(editor):
+    editor.new(DiagramKind.ER)
+    a, b, c = (editor.add_entity(x, 0, n) for x, n in ((0, "A"), (200, "B"), (400, "C")))
+    r = editor.add_relationship([a, b])
+    editor.update_relationship(r, RelationshipInput("Ha", (P(a, "(1,1)", "capo"), P(b, "(0,N)"))))
+    editor.swap_cardinalities(r)
+    parts = editor.diagram().relationships[0].participants
+    assert [(p.entity_id, p.cardinality, p.role) for p in parts] == [(a, "(0,N)", "capo"), (b, "(1,1)", "")]
+    editor.undo()
+    assert editor.diagram().relationships[0].participants[0].cardinality == "(1,1)"
+    editor.update_relationship(r, RelationshipInput("Ha", (P(a), P(b), P(c))))
+    with pytest.raises(NotFound):
+        editor.swap_cardinalities(r)
+
+
 def test_recursive_relationship_sits_beside_its_entity(editor):
     editor.new(DiagramKind.ER)
     a = editor.add_entity(100, 100)

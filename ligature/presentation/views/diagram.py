@@ -36,6 +36,7 @@ class DiagramPage(Page):
         self.redo_button.clicked.connect(self.editor.redo)
         export = QToolButton(objectName="icon", toolTip=_("Export"))
         export.setPopupMode(QToolButton.InstantPopup)
+        export.setCursor(Qt.PointingHandCursor)
         theme.set_icon(export, "download", "muted")
         menu = QMenu(export)
         for text, kind in ((_("PNG picture (editable)…"), "png"),
@@ -102,11 +103,17 @@ class DiagramPage(Page):
         self.view.zoomChanged.connect(lambda z: self.zoom_label.setText(f"{round(z * 100)}%"))
         for w in (out, self.zoom_label, zoom_in, fit):
             tool_row.addWidget(w)
-        self.align_button = QToolButton(objectName="icon",
-                                        toolTip=_("Line up the selected items (select two or more)"))
+        # Always clickable (a greyed-out button didn't say why it was off): the menu tells you
+        # what to select, and only the moves that fit the selection can be picked.
+        self.align_button = QToolButton(objectName="icon", toolTip=_("Line up the selected items"))
         self.align_button.setPopupMode(QToolButton.InstantPopup)
+        self.align_button.setCursor(Qt.PointingHandCursor)
         theme.set_icon(self.align_button, "align", "muted")
         align_menu = QMenu(self.align_button)
+        self.align_hint = align_menu.addAction("")
+        self.align_hint.setEnabled(False)
+        align_menu.addSeparator()
+        self.align_actions: dict[str, object] = {}
         for text, mode in ((_("Align left edges"), "left"), (_("Centre horizontally"), "hcenter"),
                            (_("Align right edges"), "right"), (None, None),
                            (_("Align tops"), "top"), (_("Centre vertically"), "vcenter"),
@@ -115,9 +122,9 @@ class DiagramPage(Page):
             if text is None:
                 align_menu.addSeparator()
             else:
-                align_menu.addAction(text, lambda m=mode: self.align(m))
+                self.align_actions[mode] = align_menu.addAction(text, lambda m=mode: self.align(m))
+        align_menu.aboutToShow.connect(self._refresh_align_menu)
         self.align_button.setMenu(align_menu)
-        self.align_button.setEnabled(False)
         tool_row.addWidget(self.align_button)
         self.panel_toggle = icon_button("side-panel", _("Show or hide the properties panel"),
                                         checkable=True)
@@ -133,7 +140,7 @@ class DiagramPage(Page):
         canvas.body.addWidget(line)
         canvas.body.addWidget(self.view, 1)
         self.panel = PropertiesPanel(services)
-        body = QHBoxLayout()
+        body = self.body = QHBoxLayout()
         body.setSpacing(14)
         body.addWidget(canvas, 1)
         self.panel_holder = QWidget()
@@ -204,18 +211,45 @@ class DiagramPage(Page):
         self.subtitle.setText(subtitle)
 
     def minimumSizeHint(self):
-        # What the page needs is what it can shrink to once the tool buttons are icon-only, not
-        # what it needs while they carry words (that would pin the window at 1600 px).
-        return QSize(720, 300)
+        # What the page needs is what it can shrink to once the tool buttons are icon-only and the
+        # properties panel floats, not what it needs while they carry words (1600 px).
+        return QSize(560, 300)
 
     NARROW = 1040  # below this much room for the canvas card, the tool buttons lose their words
+    FLOAT_BELOW = 860  # below this page width the properties panel floats over the canvas
+    PANEL_WIDTH = 410
+    floating = False
+
+    def _float_panel(self, floating: bool):
+        """On a narrow window (half a laptop screen) the panel can't sit beside the canvas without
+        pushing the window off the screen, so it floats over the canvas's right side instead, and
+        starts closed (double-click an item or the toolbar button opens it)."""
+        if floating != self.floating:
+            self.floating = floating
+            if floating:
+                self.body.removeWidget(self.panel_holder)
+                self.show_panel(False)
+            else:
+                self.panel.setFixedWidth(self.PANEL_WIDTH)
+                self.body.addWidget(self.panel_holder)
+        if floating:
+            m = self.root.contentsMargins()
+            width = min(self.PANEL_WIDTH, self.width() - m.left() - m.right())
+            self.panel.setFixedWidth(width)
+            # Below the canvas toolbar, so the panel button stays in reach.
+            top = self.view.mapTo(self, self.view.rect().topLeft()).y()
+            bottom = self.view.mapTo(self, self.view.rect().bottomLeft()).y()
+            self.panel_holder.setGeometry(self.width() - m.right() - width, top, width, bottom - top)
+            self.panel_holder.raise_()
 
     def resizeEvent(self, event):
         """Follow the window: the toolbar's words make the page 1400 px wide at the least, more than
         a small laptop screen has. Without them it fits anywhere, and the tooltips still say what
         each button is."""
         super().resizeEvent(event)
-        room = self.width() - (self.panel_holder.width() if self.panel_holder.isVisible() else 0)
+        self._float_panel(self.width() < self.FLOAT_BELOW)
+        beside = self.panel_holder.isVisible() and not self.floating
+        room = self.width() - (self.panel_holder.width() if beside else 0)
         style = Qt.ToolButtonIconOnly if room < self.NARROW else Qt.ToolButtonTextBesideIcon
         for b in self.tool_buttons.values():
             if b.toolButtonStyle() != style:
@@ -227,9 +261,18 @@ class DiagramPage(Page):
         if moves:
             self._try(lambda: self.editor.move(moves))
 
+    def _refresh_align_menu(self):
+        picked = sum(1 for i in self.scene.selected_ids() if i in self.scene.nodes)
+        for mode, action in self.align_actions.items():
+            action.setEnabled(picked >= (3 if mode in ("hspace", "vspace") else 2))
+        if picked < 2:
+            self.align_hint.setText(_("Select two or more items first (Ctrl+click, or drag a box around them)"))
+        elif picked == 2:
+            self.align_hint.setText(_("2 items selected · spacing evenly needs 3"))
+        else:
+            self.align_hint.setText(_("{n} items selected").format(n=picked))
+
     def _selection_changed(self):
-        if isValid(self.scene):
-            self.align_button.setEnabled(sum(1 for i in self.scene.selected_ids() if i in self.scene.nodes) >= 2)
         if isValid(self.scene) and isValid(self.panel) and self.scene.record is not None:
             self.panel.show_selection(self.scene.selected_ids(), self.editor.diagram())
 
@@ -299,6 +342,8 @@ class DiagramPage(Page):
 
     def show_panel(self, shown: bool):
         self.panel_holder.setVisible(shown)
+        if shown and self.floating:
+            self.panel_holder.raise_()
         self.panel_toggle.blockSignals(True)
         self.panel_toggle.setChecked(shown)
         self.panel_toggle.blockSignals(False)

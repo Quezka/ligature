@@ -309,12 +309,19 @@ def test_a_group_can_be_lined_up_and_spread_out(window):
     d = window.editor.diagram()
     ids = [e.id for e in d.entities][:3]
     assert len(ids) == 3
-    assert not page.align_button.isEnabled()
+    def offered():
+        page._refresh_align_menu()
+        return {m for m, a in page.align_actions.items() if a.isEnabled()}
+
+    assert page.align_button.isEnabled()  # always clickable: the menu says what to select
+    assert offered() == set()
     page.scene.select_only(ids[:1])
-    assert not page.align_button.isEnabled()  # one item has nothing to line up with
+    assert offered() == set()  # one item has nothing to line up with
+    page.scene.select_only(ids[:2])
+    assert offered() == {"left", "hcenter", "right", "top", "vcenter", "bottom"}  # spacing needs 3
     page.scene.select_only(ids)
     pump()
-    assert page.align_button.isEnabled()
+    assert "hspace" in offered() and "3" in page.align_hint.text()
 
     def rects():
         return [page.scene.nodes[i].mapRectToScene(page.scene.nodes[i].body) for i in ids]
@@ -384,3 +391,25 @@ def test_the_diagram_page_can_shrink_to_a_small_window(window):
     assert settle(1) == {Qt.ToolButtonTextBesideIcon}  # plenty of room: words
     assert settle(100000) == {Qt.ToolButtonIconOnly}  # short of room: icons
     assert settle(1) == {Qt.ToolButtonTextBesideIcon}  # and back
+
+
+def test_on_half_a_laptop_screen_the_panel_floats_inside_the_window(window):
+    """At 683 px (half of a 1366 screen) the window must not be held wider than that: the sidebar
+    shows only icons and the properties panel floats over the canvas, closed until asked for."""
+    window.open_sample("university")
+    window.show()
+    window.resize(683, 740)
+    pump()
+    page = window.diagram
+    assert window.width() == 683
+    assert window.sidebar.width() == window.sidebar.COMPACT
+    assert page.floating and not page.panel_holder.isVisible()
+    page.panel_toggle.click()
+    pump()
+    holder = page.panel_holder
+    left = holder.mapTo(window, holder.rect().topLeft()).x()
+    assert holder.isVisible() and left >= window.sidebar.width() and left + holder.width() <= window.width()
+    window.resize(1300, 800)
+    pump()
+    assert not page.floating and page.body.indexOf(holder) >= 0
+    assert window.sidebar.width() == window.sidebar.WIDE

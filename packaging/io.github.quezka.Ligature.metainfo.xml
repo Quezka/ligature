@@ -57,6 +57,11 @@
 
   <!-- Newest first. Every released version needs an entry; tests enforce it. -->
   <releases>
+    <release version="0.11.0" date="2026-11-03">
+      <description>
+        <p>Swap the cardinalities of a relationship with one button. Works on half a laptop screen: icon-only sidebar and a floating properties panel. The Align button explains what to select.</p>
+      </description>
+    </release>
     <release version="0.10.4" date="2026-10-27">
       <description>
         <p>Fixed: the compact text size now reaches labels, buttons, menus and lists too (the desktop theme was keeping them at the system's larger size), so the whole interface really is smaller.</p>

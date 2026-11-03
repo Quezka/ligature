@@ -334,6 +334,16 @@ class Editor:
             r, name=data.name.strip() or r.name, participants=tuple(participants),
             attributes=_attributes(data.attributes), notes=data.notes.rstrip())), group=f"edit:{id}")
 
+    def swap_cardinalities(self, id: str):
+        """Swap the (min,max) of the two sides of a binary relationship (each entity keeps its role):
+        for a cardinality put on the wrong side."""
+        r = self._get(self._diagram.relationship, id)
+        if len(r.participants) != 2:
+            raise NotFound("Only a relationship between two entities can swap its cardinalities.")
+        a, b = r.participants
+        self._commit(self._diagram.put(replace(r, participants=(
+            replace(a, cardinality=b.cardinality), replace(b, cardinality=a.cardinality)))))
+
     def add_generalisation(self, child: str, parent: str) -> str:
         """Make `child` a specialisation of `parent`; it joins the parent's generalisation
         if it has one. Returns the generalisation's id."""

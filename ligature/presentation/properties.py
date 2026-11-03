@@ -343,6 +343,9 @@ class RelationshipPanel(SectionPanel):
         self.add_participant = button(_("Add an entity"), "plus")
         self.add_participant.setToolTip(_("For relationships between three or more entities"))
         self.add_participant.clicked.connect(self._add_participant)
+        self.swap = button(_("Swap cardinalities"), "swap")
+        self.swap.setToolTip(_("Put each side's (min,max) on the other side"))
+        self.swap.clicked.connect(lambda: self.send(lambda: self.editor.swap_cardinalities(self.id)))
         self.attributes = AttributeList()
         self.attributes.changed.connect(self.commit)
         self.attributes.finished.connect(self.done_editing)
@@ -354,10 +357,17 @@ class RelationshipPanel(SectionPanel):
         grid_box.setLayout(self.grid)
         self.notes = notes_box(_("Rules and constraints for this relationship…"))
         self.notes.textChanged.connect(self.commit)
+        actions = QHBoxLayout()
+        actions.setSpacing(8)
+        actions.addWidget(self.add_participant)
+        actions.addWidget(self.swap)
+        actions.addStretch()
+        action_row = QWidget()
+        action_row.setLayout(actions)
         for w in (caption(_("Relationship")), self.name, caption(_("Entities")), grid_box,
-                  self.add_participant, hint, caption(_("Attributes")), self.attributes,
+                  action_row, hint, caption(_("Attributes")), self.attributes,
                   caption(_("Notes")), self.notes, self.error):
-            self.layout_.addWidget(w, 0, Qt.AlignLeft if w is self.add_participant else Qt.Alignment())
+            self.layout_.addWidget(w)
         self.layout_.addStretch()
         self.entities: list[tuple[str, str]] = []
 
@@ -379,6 +389,7 @@ class RelationshipPanel(SectionPanel):
             _select(row["card"], p.cardinality)
             _set_text(row["role"], p.role)
             row["remove"].setEnabled(len(r.participants) > 2)
+        self.swap.setVisible(len(r.participants) == 2)
         self.attributes.set_attributes(r.attributes)
 
     def _row(self):
