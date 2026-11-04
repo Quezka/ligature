@@ -4,6 +4,11 @@ All notable changes to Ligature. Versions follow [Semantic Versioning](https://s
 patch for fixes, minor for new features, major for breaking changes (while below 1.0,
 breaking changes bump the minor version).
 
+## [0.12.0] - 2026-11-04
+
+### Changed
+- A new look: Material 3 shapes and tonal colours, and the Manrope typeface. A flick on a trackpad now keeps gliding; a mouse wheel works as before.
+
 ## [0.11.1] - 2026-11-04
 
 Fixed: changing the interface size and pressing Restart now works, and a button's menu opens exactly under the button (kit 0.5.3).
