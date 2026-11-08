@@ -4,6 +4,11 @@ All notable changes to Ligature. Versions follow [Semantic Versioning](https://s
 patch for fixes, minor for new features, major for breaking changes (while below 1.0,
 breaking changes bump the minor version).
 
+## [0.15.0] - 2026-11-08
+
+### Changed
+- **Liquid glass done properly, the Apple way.** Backgrounds are plain again and content stays solid; the chrome is glass. Menus, drop-down lists and tooltips blur what's really under them, settings headers float over their cards and blur them as they scroll, and the sidebar floats as an inset panel. On Windows 11 the window shows the system's Mica behind the sidebar. The colour wash is gone.
+
 ## [0.14.0] - 2026-11-08
 
 ### Changed
