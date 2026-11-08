@@ -339,4 +339,6 @@ MESSAGES = {
     'Align bottoms': 'Allinea in basso',
     'Space evenly across': 'Distribuisci in orizzontale',
     'Space evenly down': 'Distribuisci in verticale',
+    "Glass look": "Aspetto vetro",
+    "Frosted, see-through surfaces over a soft wash of colour.": "Superfici smerigliate e trasparenti su una leggera sfumatura di colore.",
 }

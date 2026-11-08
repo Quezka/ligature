@@ -413,3 +413,26 @@ def test_on_half_a_laptop_screen_the_panel_floats_inside_the_window(window):
     pump()
     assert not page.floating and page.body.indexOf(holder) >= 0
     assert window.sidebar.width() == window.sidebar.WIDE
+
+
+def test_settings_window_has_look_and_updates(qtbot_free_app=None):
+    from PySide6.QtWidgets import QApplication
+    from ligature.presentation import settings as settings_module
+    from ligature.presentation import theme
+
+    class Updates:
+        current_version = "9.9.9"
+        def auto_check(self): return True
+        def set_auto_check(self, on): self.on = on
+
+    class Services:
+        updates = Updates()
+
+    dialog = settings_module.SettingsDialog(Services())
+    assert dialog.sections()[:1] == ["Appearance"] and len(dialog.sections()) == 2
+    was = theme.manager().glass
+    dialog.show()
+    QApplication.processEvents()
+    assert not dialog.grab().isNull()
+    dialog.close()
+    assert theme.manager().glass == was

@@ -342,4 +342,6 @@ MESSAGES = {
     'Align bottoms': 'По нижнему краю',
     'Space evenly across': 'Равномерно по горизонтали',
     'Space evenly down': 'Равномерно по вертикали',
+    "Glass look": "Эффект стекла",
+    "Frosted, see-through surfaces over a soft wash of colour.": "Матовые полупрозрачные поверхности на мягком цветном фоне.",
 }
