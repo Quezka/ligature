@@ -343,5 +343,8 @@ MESSAGES = {
     'Space evenly across': 'Равномерно по горизонтали',
     'Space evenly down': 'Равномерно по вертикали',
     "Glass look": "Эффект стекла",
-    "Frosted, see-through surfaces over a soft wash of colour.": "Матовые полупрозрачные поверхности на мягком цветном фоне.",
+    "Menus, bars and headers blur what's under them.": 'Меню, панели и заголовки размывают то, что под ними.',
+    'See-through windows': 'Прозрачные окна',
+    'The desktop shows through, blurred. Takes effect the next time the app starts.': 'Сквозь окно виден рабочий стол, размытый. Действует после перезапуска приложения.',
+    'On GNOME this needs the Blur my Shell extension.': 'В GNOME для этого нужно расширение Blur my Shell.',
 }

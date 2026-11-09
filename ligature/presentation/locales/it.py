@@ -340,5 +340,8 @@ MESSAGES = {
     'Space evenly across': 'Distribuisci in orizzontale',
     'Space evenly down': 'Distribuisci in verticale',
     "Glass look": "Aspetto vetro",
-    "Frosted, see-through surfaces over a soft wash of colour.": "Superfici smerigliate e trasparenti su una leggera sfumatura di colore.",
+    "Menus, bars and headers blur what's under them.": 'Menu, barre e intestazioni sfocano ciò che sta sotto.',
+    'See-through windows': 'Finestre trasparenti',
+    'The desktop shows through, blurred. Takes effect the next time the app starts.': "Si vede il desktop dietro, sfocato. Vale dal prossimo avvio dell'app.",
+    'On GNOME this needs the Blur my Shell extension.': "Su GNOME serve l'estensione Blur my Shell.",
 }
