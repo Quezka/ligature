@@ -412,7 +412,7 @@ def test_on_half_a_laptop_screen_the_panel_floats_inside_the_window(window):
     window.resize(1300, 800)
     pump()
     assert not page.floating and page.body.indexOf(holder) >= 0
-    assert window.sidebar.width() == window.sidebar.WIDE
+    assert window.sidebar.width() >= window.sidebar.WIDE
 
 
 def test_settings_window_has_look_and_updates(qtbot_free_app=None):

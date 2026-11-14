@@ -4,6 +4,11 @@ All notable changes to Ligature. Versions follow [Semantic Versioning](https://s
 patch for fixes, minor for new features, major for breaking changes (while below 1.0,
 breaking changes bump the minor version).
 
+## [0.17.2] - 2026-11-14
+
+- **Menus open where you click, at any interface size** (they used to drift up and left above 100 %, on Wayland).
+- **The sidebar fits its title and page names**, and shows only icons while the window is narrow.
+
 ## [0.17.1] - 2026-11-09
 
 - Smoother scrolling and window moves: the app only asks GNOME's Blur my Shell to blur behind its windows while they're see-through (with see-through off, that blur was redone on every frame for nothing). The glass header over scrolling pages is cheaper to draw.

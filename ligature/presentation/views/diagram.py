@@ -15,6 +15,7 @@ from ..canvas import DiagramScene, DiagramView, Tool, style_for
 from ..i18n import _
 from ..properties import LINK_KINDS, PropertiesPanel
 from .common import Card, Page, icon_button, label, primary_button
+from quezka_ui.fit import exec_menu
 
 CLIPBOARD = "application/x-ligature"  # copied diagram items
 
@@ -424,6 +425,6 @@ class DiagramPage(Page):
             menu.addAction(_("Paste"), self.paste)
             menu.addSeparator()
             menu.addAction(_("Fit the diagram"), self.view.fit)
-        menu.exec(self.view.viewport().mapToGlobal(pos))
+        exec_menu(menu, self.view.viewport().mapToGlobal(pos))
 
 
