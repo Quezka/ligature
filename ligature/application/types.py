@@ -10,3 +10,12 @@ CARDINALITIES = tuple(str(c) for c in _CARDINALITIES)  # "(0,1)", "(1,1)", "(0,N
 # Offered in the attribute type box; any other type can be typed in.
 SQL_TYPES = ("INT", "VARCHAR(50)", "VARCHAR(100)", "CHAR(10)", "TEXT", "DATE", "TIME",
              "DATETIME", "DECIMAL(10,2)", "FLOAT", "BOOLEAN")
+
+
+def normal_cardinality(text: str) -> str | None:
+    """A typed cardinality written the standard way ("0, 2" -> "(0,2)"), or None if it isn't one."""
+    from ..domain.model import Cardinality
+    try:
+        return str(Cardinality.parse(text))
+    except ValueError:
+        return None

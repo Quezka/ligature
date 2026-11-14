@@ -133,8 +133,8 @@ MESSAGES = {
     "Entities": "Сущности",
     "Add an entity": "Добавить сущность",
     "For relationships between three or more entities": "Для связей трёх и более сущностей",
-    "How many times this entity takes part: (min,max)":
-        "Сколько раз сущность участвует в связи: (min,max)",
+    "How many times this entity takes part: (min,max). Type exact numbers too, like (0,2).":
+        "Сколько раз сущность участвует в связи: (min,max). Можно ввести и точные числа, например (0,2).",
     "role": "роль",
     "Remove this entity from the relationship": "Убрать эту сущность из связи",
     "(min,max) is how many times each entity takes part: (1,1) exactly once, (0,N) any number of times. A role tells the two sides of a recursive relationship apart.":

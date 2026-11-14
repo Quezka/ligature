@@ -133,8 +133,8 @@ MESSAGES = {
     "Entities": "Entità",
     "Add an entity": "Aggiungi un’entità",
     "For relationships between three or more entities": "Per relazioni tra tre o più entità",
-    "How many times this entity takes part: (min,max)":
-        "Quante volte questa entità partecipa: (min,max)",
+    "How many times this entity takes part: (min,max). Type exact numbers too, like (0,2).":
+        "Quante volte questa entità partecipa: (min,max). Puoi scrivere anche numeri esatti, come (0,2).",
     "role": "ruolo",
     "Remove this entity from the relationship": "Rimuovi questa entità dalla relazione",
     "(min,max) is how many times each entity takes part: (1,1) exactly once, (0,N) any number of times. A role tells the two sides of a recursive relationship apart.":

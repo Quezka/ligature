@@ -21,7 +21,7 @@ from ..application.records import (
 )
 from ..application.services import Services
 from ..application.types import (
-    CARDINALITIES, DEFAULT_TYPE, MULTIPLICITIES, SQL_TYPES, ClassKind, DiagramKind, LinkKind,
+    CARDINALITIES, DEFAULT_TYPE, normal_cardinality, MULTIPLICITIES, SQL_TYPES, ClassKind, DiagramKind, LinkKind,
     Mapping, Notation,
 )
 from .i18n import N_, _, plural
@@ -65,6 +65,10 @@ def _select(combo: QComboBox, value):
     if index >= 0 and combo.currentIndex() != index:
         combo.blockSignals(True)
         combo.setCurrentIndex(index)
+        combo.blockSignals(False)
+    elif index < 0 and combo.isEditable() and combo.currentText() != value:
+        combo.blockSignals(True)
+        combo.setEditText(str(value))  # a typed cardinality, like (0,2)
         combo.blockSignals(False)
 
 
@@ -400,7 +404,9 @@ class RelationshipPanel(SectionPanel):
         card = QComboBox()
         for c in CARDINALITIES:
             card.addItem(c, c)
-        card.setToolTip(_("How many times this entity takes part: (min,max)"))
+        card.setEditable(True)  # any (min,max), like (0,2)
+        card.setInsertPolicy(QComboBox.NoInsert)
+        card.setToolTip(_("How many times this entity takes part: (min,max). Type exact numbers too, like (0,2)."))
         role = QLineEdit(placeholderText=_("role"))
         role.setFixedWidth(84)
         card.setFixedWidth(84)
@@ -411,10 +417,27 @@ class RelationshipPanel(SectionPanel):
             self.grid.addWidget(w, index, column)
         entity.currentIndexChanged.connect(lambda _i: (self.commit(), self.done_editing()))
         card.currentIndexChanged.connect(lambda _i: (self.commit(), self.done_editing()))
+        card.lineEdit().editingFinished.connect(lambda c=card: self._typed_cardinality(c))
         role.textEdited.connect(lambda _t: self.commit())
         role.editingFinished.connect(self.done_editing)
         remove.clicked.connect(lambda _c=False, r=row: self._remove(r))
         return row
+
+    def _typed_cardinality(self, combo: QComboBox):
+        """A cardinality typed by hand: kept when it reads as (min,max), else the box goes back to the last one."""
+        text = normal_cardinality(combo.currentText())
+        if text is None:
+            combo.setEditText(combo.currentData() or "(0,N)")
+            return
+        index = combo.findData(text)
+        combo.blockSignals(True)
+        if index >= 0:
+            combo.setCurrentIndex(index)
+        else:
+            combo.setEditText(text)
+        combo.blockSignals(False)
+        self.commit()
+        self.done_editing()
 
     def _add_participant(self):
         if self.entities:
@@ -438,7 +461,8 @@ class RelationshipPanel(SectionPanel):
     def commit(self):
         if not self.id:
             return
-        participants = tuple(ParticipantInput(r["entity"].currentData(), r["card"].currentData(),
+        participants = tuple(ParticipantInput(r["entity"].currentData(),
+                                              normal_cardinality(r["card"].currentText()) or r["card"].currentData(),
                                               r["role"].text()) for r in self.rows
                              if r["entity"].currentData())
         data = RelationshipInput(self.name.text(), participants, self.attributes.attributes(),

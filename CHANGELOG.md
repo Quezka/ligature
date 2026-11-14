@@ -4,6 +4,10 @@ All notable changes to Ligature. Versions follow [Semantic Versioning](https://s
 patch for fixes, minor for new features, major for breaking changes (while below 1.0,
 breaking changes bump the minor version).
 
+## [0.19.0] - 2026-11-14
+
+- **Exact cardinalities**: type any (min,max) in a relationship, like (0,2) or (2,5), not just (0,1), (1,1), (0,N) and (1,N). Files keep them; the SQL treats a max over 1 as many.
+
 ## [0.18.0] - 2026-11-14
 
 The suite's new look: **Material 3, tonal** (no more liquid glass).

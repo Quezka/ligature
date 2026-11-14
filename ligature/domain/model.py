@@ -82,20 +82,43 @@ class Entity:
 
 @dataclass(frozen=True)
 class Cardinality:
-    """How many times one entity takes part in a relationship: (min, max), max 1 or N."""
+    """How many times one entity takes part in a relationship: (min, max). max is N (many, no limit), 1, or an
+    exact number such as 2 in (0,2)."""
 
-    min: int = 0  # 0 or 1
-    many: bool = True  # max N (True) or 1 (False)
+    min: int = 0
+    many: bool = True  # max over 1 (True) or exactly 1 (False)
+    upper: int | None = None  # an exact max over 1 (2 in "(0,2)"); None: N when many, 1 when not
+
+    def __post_init__(self):
+        if self.min < 0:
+            raise ValueError(f"min {self.min} is below 0")
+        if self.upper is not None:
+            if self.upper < 1 or self.upper < self.min:
+                raise ValueError(f"max {self.upper} is below min {self.min}")
+            if self.upper == 1:  # one way to write (x,1)
+                object.__setattr__(self, "upper", None)
+                object.__setattr__(self, "many", False)
+            else:
+                object.__setattr__(self, "many", True)
+        elif not self.many and self.min > 1:
+            raise ValueError(f"max 1 is below min {self.min}")
+
+    @property
+    def max_text(self) -> str:
+        return str(self.upper) if self.upper is not None else ("N" if self.many else "1")
 
     def __str__(self) -> str:
-        return f"({self.min},{'N' if self.many else '1'})"
+        return f"({self.min},{self.max_text})"
 
     @classmethod
     def parse(cls, text: str) -> "Cardinality":
-        m = re.fullmatch(r"\s*\(?\s*([01])\s*,\s*([1nN*])\s*\)?\s*", text)
+        m = re.fullmatch(r"\s*\(?\s*(\d{1,4})\s*,\s*(\d{1,4}|[nN*])\s*\)?\s*", text)
         if not m:
             raise ValueError(f"not a cardinality: {text!r}")
-        return cls(int(m.group(1)), m.group(2) in "nN*")
+        low, high = int(m.group(1)), m.group(2)
+        if high in ("n", "N", "*"):
+            return cls(low, True)
+        return cls(low, int(high) > 1, int(high))
 
 
 CARDINALITIES = (Cardinality(0, False), Cardinality(1, False), Cardinality(0, True),

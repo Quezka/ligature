@@ -152,7 +152,7 @@ def _identifying(e: Entity, r: Relationship) -> Participant | None:
     if not e.weak or len(r.participants) != 2 or r.recursive:
         return None
     mine = [p for p in r.participants if p.entity_id == e.id]
-    if mine and mine[0].cardinality.min == 1 and not mine[0].cardinality.many:
+    if mine and mine[0].cardinality.min >= 1 and not mine[0].cardinality.many:
         return next(p for p in r.participants if p.entity_id != e.id)
     return None
 
