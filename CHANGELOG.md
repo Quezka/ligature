@@ -4,6 +4,11 @@ All notable changes to Ligature. Versions follow [Semantic Versioning](https://s
 patch for fixes, minor for new features, major for breaking changes (while below 1.0,
 breaking changes bump the minor version).
 
+## [0.19.1] - 2026-11-15
+
+- **New icon**, drawn like every other Quezka app: the same rounded square in its own plain colour with a white symbol.
+- Navigation rail on short screens (a 1366×768 laptop): when the page names under the icons would squeeze together, they move beside the icons (kit 0.13.1).
+
 ## [0.19.0] - 2026-11-14
 
 - **Exact cardinalities**: type any (min,max) in a relationship, like (0,2) or (2,5), not just (0,1), (1,1), (0,N) and (1,N). Files keep them; the SQL treats a max over 1 as many.
