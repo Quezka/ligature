@@ -4,6 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from PySide6.QtCore import QSize, Qt, Signal
+from quezka_ui.flow import Flow
 from PySide6.QtWidgets import (
     QGridLayout, QListWidget, QListWidgetItem, QSizePolicy, QToolButton, QVBoxLayout,
 )
@@ -25,7 +26,7 @@ class HomePage(Page):
         self.subtitle.setText(_("ER and UML class diagrams for school, with the SQL they make."))
 
         start = Card(_("Start"))
-        grid = QGridLayout()
+        grid = Flow()  # wraps @ split screen
         grid.setSpacing(10)
         for column, (icon, text, detail, action) in enumerate((
                 ("entity", _("New ER diagram"), _("Entities, relationships, keys → SQL"),
@@ -47,7 +48,7 @@ class HomePage(Page):
         start.body.addLayout(grid)
         samples = label(_("Or look around a sample first:"), "hint")
         start.add(samples)
-        row = QGridLayout()
+        row = Flow(fill=False)
         for column, (name, text, icon) in enumerate((
                 ("school", _("School register (ER)"), "database"),
                 ("university", _("University, with a generalisation (ER)"), "inherit"),
@@ -55,7 +56,7 @@ class HomePage(Page):
             sample = button(text, icon)
             sample.clicked.connect(lambda _c=False, n=name: self.sampleRequested.emit(n))
             row.addWidget(sample, 0, column)
-        row.setColumnStretch(3, 1)
+
         start.body.addLayout(row)
 
         recent = Card(_("Recent"))
