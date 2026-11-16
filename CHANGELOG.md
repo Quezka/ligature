@@ -4,6 +4,10 @@ All notable changes to Ligature. Versions follow [Semantic Versioning](https://s
 patch for fixes, minor for new features, major for breaking changes (while below 1.0,
 breaking changes bump the minor version).
 
+## [0.20.1] - 2026-11-16
+
+- **Lists and menus open right under their box** when you chose an interface size other than 100% on GNOME (kit 0.15.1).
+
 ## [0.20.0] - 2026-11-16
 
 - **Fits split screen:** the window can shrink to half of a 1366×768 screen; pages that need more room scroll sideways instead of pushing the window wider, and the start tiles wrap (kit 0.15.0).
